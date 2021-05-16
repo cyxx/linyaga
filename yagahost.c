@@ -226,7 +226,7 @@ static PyObject *yagahost_isaudioplaying(PyObject *self, PyObject *args) {
 
 static PyObject *yagahost_pollevent(PyObject *self, PyObject *args) {
 	struct event_t ev;
-	if (System_poll_event(&ev)) {
+	if (System_PollEvent(&ev)) {
 		PyObject *obj = PyDict_New();
 		PyDict_SetItemString(obj, "type", PyInt_FromLong(ev.type));
 		switch (ev.type) {
@@ -253,6 +253,45 @@ static PyObject *yagahost_pollevent(PyObject *self, PyObject *args) {
 	Py_RETURN_NONE;
 }
 
+static PyObject *yagahost_loadcursor(PyObject *self, PyObject *args) {
+	int cursor = -1;
+	char *name;
+
+	if (!PyArg_ParseTuple(args, "s", &name)) {
+		return 0;
+	}
+	FILE *fp = Resource_Open(name);
+	if (!fp) {
+		fprintf(stderr, "Failed to open cursor '%s'\n", name);
+	} else {
+		const char *sep = strrchr(name, '.');
+		if (sep) {
+			const int anim = Animation_Load(fp, sep + 1);
+			if (!(anim < 0)) {
+				struct layer_t *layer = Animation_GetLayer(anim, 0, 0);
+				if (layer) {
+					cursor = System_LoadCursor(layer->rgba, layer->w, layer->h);
+				}
+				Animation_Free(anim);
+			}
+		}
+		fclose(fp);
+	}
+	return PyInt_FromLong(cursor);
+}
+
+static PyObject *yagahost_setcursor(PyObject *self, PyObject *args) {
+	int cursor;
+
+	if (!PyArg_ParseTuple(args, "i", &cursor)) {
+		return 0;
+	}
+	if (!(cursor < 0)) {
+		System_SetCursor(cursor);
+	}
+	Py_RETURN_NONE;
+}
+
 static PyMethodDef yagahost_methods[] = {
 	{ "HasAsset", yagahost_hasasset, METH_VARARGS, "" },
 	{ "LoadAsset", yagahost_loadasset, METH_VARARGS, "" },
@@ -269,6 +308,8 @@ static PyMethodDef yagahost_methods[] = {
 	{ "StopAudio", yagahost_stopaudio, METH_VARARGS, "" },
 	{ "IsAudioPlaying", yagahost_isaudioplaying, METH_VARARGS, "" },
 	{ "PollEvent", yagahost_pollevent, METH_VARARGS, "" },
+	{ "LoadCursor", yagahost_loadcursor, METH_VARARGS, "" },
+	{ "SetCursor", yagahost_setcursor, METH_VARARGS, "" },
 	{ 0, 0, 0, 0 }
 };
 

@@ -45,6 +45,7 @@ int Animation_Load(FILE *fp, const char *name);
 int Animation_Free(int anim);
 
 int Animation_GetFramesCount(int anim);
+struct layer_t *Animation_GetLayer(int anim, int frame, int layer);
 
 int Animation_Seek(int anim, int frame);
 int Animation_SetLayer(int anim, int frame, const char *name, int state);

@@ -17,29 +17,29 @@ static struct anim_t _animations[MAX_ANIMATIONS];
 static struct anim_t *_next_free_animation;
 
 
-static struct layer_t *FindFreeLayer() {
+static struct layer_t *find_free_layer() {
 	struct layer_t *layer = _next_free_layer;
 	if (layer) {
 		_next_free_layer = layer->next_free;
 		layer->next_free = 0;
 	} else {
-		fprintf(stderr, "FindFreeLayer MAX_LAYERS\n");
+		fprintf(stderr, "find_free_layer MAX_LAYERS\n");
 	}
 	return layer;
 }
 
-static void FreeLayer(struct layer_t *layer) {
+static void free_layer(struct layer_t *layer) {
 	layer->next_free = _next_free_layer;
 	_next_free_layer = layer;
 }
 
-static struct frame_t *FindFreeFrame() {
+static struct frame_t *find_free_frame() {
 	struct frame_t *frame = _next_free_frame;
 	if (frame) {
 		_next_free_frame = frame->next_free;
 		frame->next_free = 0;
 	} else {
-		fprintf(stderr, "FindFreeFrame MAX_FRAMES\n");
+		fprintf(stderr, "find_free_frame MAX_FRAMES\n");
 	}
 	return frame;
 }
@@ -50,18 +50,18 @@ static void FreeFrame(struct frame_t *frame) {
 	_next_free_frame = frame;
 }
 
-static struct anim_t *FindFreeAnimation() {
+static struct anim_t *find_free_animation() {
 	struct anim_t *animation = _next_free_animation;
 	if (animation) {
 		_next_free_animation = animation->next_free;
 		animation->next_free = 0;
 	} else {
-		fprintf(stderr, "FindFreeAnimation MAX_ANIMATIONS\n");
+		fprintf(stderr, "find_free_animation MAX_ANIMATIONS\n");
 	}
 	return animation;
 }
 
-static void FreeAnimation(struct anim_t *animation) {
+static void free_animation(struct anim_t *animation) {
 	animation->next_free = _next_free_animation;
 	_next_free_animation = animation;
 }
@@ -96,18 +96,18 @@ static struct {
 };
 
 int Animation_Load(FILE *fp, const char *name) {
-	struct anim_t *animation = FindFreeAnimation();
+	struct anim_t *animation = find_free_animation();
 	if (animation) {
 		for (int i = 0; _animationFormats[i].ext; ++i) {
 			if (strcasecmp(_animationFormats[i].ext, name) == 0) {
-				if (_animationFormats[i].load(fp, animation, FindFreeFrame, FindFreeLayer) < 0) {
+				if (_animationFormats[i].load(fp, animation, find_free_frame, find_free_layer) < 0) {
 					break;
 				}
 				return animation - _animations;
 			}
 		}
 		fprintf(stderr, "Invalid animation '%s'\n", name);
-		FreeAnimation(animation);
+		free_animation(animation);
 	}
 	return -1;
 }
@@ -119,19 +119,29 @@ int Animation_Free(int anim) {
 			struct layer_t *next_layer = layer->next_layer;
 			free(layer->rgba);
 			memset(layer, 0, sizeof(struct layer_t));
-			FreeLayer(layer);
+			free_layer(layer);
 			layer = next_layer;
 		}
 		memset(frame, 0, sizeof(struct frame_t));
 		FreeFrame(frame);
 		frame = next_frame;
 	}
-	FreeAnimation(&_animations[anim]);
+	free_animation(&_animations[anim]);
 	return 0;
 }
 
 int Animation_GetFramesCount(int anim) {
 	return _animations[anim].frames_count;
+}
+
+struct layer_t *Animation_GetLayer(int anim, int frame_num, int layer_num) {
+	struct frame_t *frame = _animations[anim].first_frame;
+	for (; frame_num-- != 0 && frame; frame = frame->next_frame);
+	assert(frame);
+	struct layer_t *layer = frame->first_layer;
+	for (; layer_num-- != 0 && layer; layer = layer->next_layer);
+	assert(layer);
+	return layer;
 }
 
 int Animation_Seek(int anim, int frame_num) {

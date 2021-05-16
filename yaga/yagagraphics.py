@@ -53,10 +53,17 @@ class RenderTarget(IRenderTarget):
 		self.identity = 0
 		self.mode = targetType
 		self._title = ''
+		self._cursors = {}
 	def LoadCursorFile(self, path, resId):
-		print('STUB: RenderTarget.LoadCursorFile path:' + path)
+		#print('STUB: RenderTarget.LoadCursorFile path:' + path)
+		if not (resId in self._cursors):
+			if path.endswith('.cur') or path.endswith('.rle'):
+				path = path[:-3] + 'mng'
+			num = yagahost.LoadCursor(path)
+			self._cursors[resId] = num
 	def SetCursorByID(self, resId):
-		print('STUB: RenderTarget.SetCursorByID resId:' + str(resId))
+		#print('STUB: RenderTarget.SetCursorByID resId:' + str(resId))
+		yagahost.SetCursor(self._cursors[resId])
 	def RenderBegin(self, clearFlags):
 		yagahost.ClearScreen()
 	def RenderEnd(self):

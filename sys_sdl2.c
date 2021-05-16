@@ -2,11 +2,20 @@
 #include <SDL.h>
 #include "sys.h"
 
+#define MAX_CURSORS 8
+
+struct cursor_t {
+	SDL_Cursor *cursor;
+	SDL_Surface *surface;
+};
+
 static int _screen_w;
 static int _screen_h;
 static SDL_Window *_window;
 static SDL_Renderer *_renderer;
 static SDL_Texture *_texture;
+static struct cursor_t _cursors[MAX_CURSORS];
+static int _cursors_count;
 
 int System_Init() {
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
@@ -31,6 +40,12 @@ void System_Fini() {
 		SDL_DestroyWindow(_window);
 		_window = 0;
 	}
+	for (int i = 0; i < _cursors_count; ++i) {
+		struct cursor_t *cursor = &_cursors[i];
+		SDL_FreeSurface(cursor->surface);
+		SDL_FreeCursor(cursor->cursor);
+	}
+	_cursors_count = 0;
 	SDL_Quit();
 }
 
@@ -68,7 +83,20 @@ void System_set_screen_title(const char *name) {
 	SDL_SetWindowTitle(_window, name);
 }
 
-bool System_poll_event(struct event_t *event) {
+int System_LoadCursor(const uint32_t *rgba, int w, int h) {
+	assert(_cursors_count < MAX_CURSORS);
+	struct cursor_t *cursor = &_cursors[_cursors_count++];
+	cursor->surface = SDL_CreateRGBSurfaceFrom(rgba, w, h, 32, w * sizeof(uint32_t), 0xFF, 0xFF00, 0xFF0000, 0xFF000000);
+	cursor->cursor = SDL_CreateColorCursor(cursor->surface, 1, 1);
+	return cursor - _cursors;
+}
+
+void System_SetCursor(int num) {
+	assert(num < _cursors_count);
+	SDL_SetCursor(_cursors[num].cursor);
+}
+
+bool System_PollEvent(struct event_t *event) {
 	SDL_Event ev;
 	if (SDL_PollEvent(&ev)) {
 		switch (ev.type) {

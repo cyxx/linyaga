@@ -60,7 +60,7 @@ static PyObject *ZlibDecompress(PyObject *self, PyObject *args) {
 				if (_PyString_Resize(&py_string, bufsize * 2) == -1) {
 					inflateEnd(&z_str);
 					goto ret_decref;
-				}				
+				}
 				z_str.next_out = (Bytef *)&((PyStringObject *)py_string)->ob_sval[bufsize];
 				z_str.avail_out = bufsize;
 				bufsize *= 2;
@@ -92,7 +92,7 @@ static PyMethodDef ZlibMethods[] = {
 void initzlib() {
 	PyObject *module = Py_InitModule("zlib", ZlibMethods);
 	PyObject *dict = PyModule_GetDict(module);
-	
+
 	_zlibException = PyErr_NewException("zlib.error", 0, 0);
 	if (_zlibException) {
 		PyDict_SetItemString(dict, "error", _zlibException);

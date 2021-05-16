@@ -123,7 +123,7 @@ void Resource_Init() {
 	_data_path = path;
 	list_datafiles(path);
 	_next_file = &_files[0];
-	for (int i = 0; i < MAX_FILES; ++i) {
+	for (int i = 0; i < MAX_FILES - 1; ++i) {
 		_files[i].next_free = &_files[i + 1];
 	}
 }

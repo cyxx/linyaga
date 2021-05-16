@@ -22,12 +22,11 @@ If the `DATAPATH` environment variable is not set, data files should be copied t
 
 ## Compiling
 
-The code depends on [Python 2.2.1](https://www.python.org/downloads/release/python-221/), [dr_libs](https://github.com/mackron/dr_libs) and [zlib](https://zlib.net/).
+The code depends on [dr_libs](https://github.com/mackron/dr_libs), [Python 2.2.1](https://www.python.org/downloads/release/python-221/), [SDL2](https://libsdl.org/) and [zlib](https://zlib.net/).
 
 
 ## Missing Features
 
-* Cursors
 * Font rendering
 * Lipsync
 * Videos playback

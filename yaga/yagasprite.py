@@ -1,4 +1,5 @@
 
+import random
 import yagaevents
 import yagagraphics
 import yagahost
@@ -133,12 +134,16 @@ class TalkieSpriteTalkies(object):
 			self.sounds._queue[0].Run(scene)
 			self.isPlaying = True
 
+RANDOM_PHONEME = True
+PHONEMES = { 'A' : 2, 'EE' : 4, 'OH' : 8, 'U' : 16, 'D' : 32, 'M' : 128, 'TH' : 256, 'F' : 512, 'UH' : 1024 }
+
 class TalkieSprite(Sprite):
 	def __init__(self):
 		Sprite.__init__(self)
 		self.talkies = TalkieSpriteTalkies()
 		self._talkieStream = None
 		self._time = 0
+		self._rnd = random.Random()
 	def AddChild(self, stream):
 		# print('STUB: TalkieSprite.AddChild stream:' + str(stream))
 		self._talkieStream = stream
@@ -153,6 +158,9 @@ class TalkieSprite(Sprite):
 		if self.talkies.isPlaying:
 			self.talkies.Seek(timeOffset)
 		if self._talkieStream:
+			if RANDOM_PHONEME:
+				self.renderMask = self._rnd.choice(PHONEMES.values())
+				return
 			mask = self._talkieStream.MaskData(int(self._time))
 			if mask:
 				self.renderMask = mask
