@@ -51,7 +51,7 @@ struct zipfile_t *Zipfile_Open(const char *name) {
 		fread_le16(fp); /* flags */
 		const uint16_t compression = fread_le16(fp);
 		if (compression != 0) {
-			fprintf(stdout, "Unhandled compression %d\n", compression);
+			fprintf(stderr, "Unhandled compression %d\n", compression);
 			continue;
 		}
 		fread_le16(fp); /* last modification file time */
@@ -71,7 +71,7 @@ struct zipfile_t *Zipfile_Open(const char *name) {
 			}
 		}
 		if (extra_length != 0) {
-			fseek(fp, name_length, SEEK_CUR);
+			fseek(fp, extra_length, SEEK_CUR);
 		}
 		entry->offset = ftell(fp);
 		fseek(fp, compressed_size, SEEK_CUR);

@@ -27,6 +27,5 @@ The code depends on [dr_libs](https://github.com/mackron/dr_libs), [Python 2.2.1
 
 ## Missing Features
 
-* Font rendering
 * Lipsync
 * Videos playback

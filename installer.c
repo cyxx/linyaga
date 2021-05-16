@@ -3,92 +3,84 @@
 #include "intern.h"
 
 
-static uint8_t _archiveHeader[24];
-static const char *_archiveFilePath;
-static uint32_t _archiveTOCpos;
-static uint8_t *_archiveTOCbuf, *_archiveTOCbufend;
-static FILE *_archiveFileHandle = 0;
+static char *_archive_path;
+static uint32_t _archive_offset;
+static uint8_t *_archive_toc, *_archive_tocend;
+static FILE *_archive_fp;
 
 
 static void open_archive() {
 	static const uint8_t SIG[] = { 0x4D, 0x45, 0x49, 0x0C, 0x0B, 0x0A, 0x0B, 0x0E };
 
-	_archiveFileHandle = fopen(_archiveFilePath, "rb");
-	assert(_archiveFileHandle);
+	_archive_fp = fopen(_archive_path, "rb");
+	assert(_archive_fp);
 
-	fseek(_archiveFileHandle, 0, SEEK_END);
-	uint32_t fileSize = ftell(_archiveFileHandle);
-	fseek(_archiveFileHandle, -24, SEEK_END);
+	fseek(_archive_fp, 0, SEEK_END);
+	const uint32_t fileSize = ftell(_archive_fp);
+	fseek(_archive_fp, -24, SEEK_END);
 
-	fread(_archiveHeader, 24, 1, _archiveFileHandle);
-	if (memcmp(_archiveHeader, SIG, sizeof(SIG)) == 0) {
-		_archiveTOCpos = fileSize - READ_BE_UINT32(_archiveHeader + 8);
+	uint8_t buf[24];
+	fread(buf, 24, 1, _archive_fp);
+	assert(memcmp(buf, SIG, sizeof(SIG)) == 0);
+	_archive_offset = fileSize - READ_BE_UINT32(buf + 8);
 
-		uint32_t pos = _archiveTOCpos + READ_BE_UINT32(_archiveHeader + 12);
-		fseek(_archiveFileHandle, pos, SEEK_SET);
-		int sizeTOC = READ_BE_UINT32(_archiveHeader + 16);
-
-		_archiveTOCbuf = (uint8_t *)malloc(sizeTOC);
-		fread(_archiveTOCbuf, sizeTOC, 1, _archiveFileHandle);
-		_archiveTOCbufend = _archiveTOCbuf + sizeTOC;
-
-		int count = 0;
-		for (const uint8_t *p = _archiveTOCbuf; p < _archiveTOCbufend; p += READ_BE_UINT32(p)) {
-			fprintf(stdout, "TOC entry #%d type %c\n", count, p[17]);
+	const uint32_t pos = _archive_offset + READ_BE_UINT32(buf + 12);
+	fseek(_archive_fp, pos, SEEK_SET);
+	const int size_toc = READ_BE_UINT32(buf + 16);
+	_archive_toc = (uint8_t *)malloc(size_toc);
+	if (!_archive_toc) {
+		fprintf(stderr, "Failed to allocate %d bytes\n", size_toc);
+	} else {
+		fread(_archive_toc, size_toc, 1, _archive_fp);
+		_archive_tocend = _archive_toc + size_toc;
+		for (const uint8_t *p = _archive_toc; p < _archive_tocend; p += READ_BE_UINT32(p)) {
+			// fprintf(stdout, "TOC entry #%d type %c\n", count, p[17]);
 			assert(strchr("zms", p[17]));
-			++count;
 		}
 	}
 }
 
 static void close_archive() {
-	if (_archiveFileHandle) {
-		fclose(_archiveFileHandle);
-		_archiveFileHandle = 0;
+	if (_archive_fp) {
+		fclose(_archive_fp);
+		_archive_fp = 0;
 	}
-	if (_archiveTOCbuf) {
-		free(_archiveTOCbuf);
-		_archiveTOCbuf = 0;
+	if (_archive_toc) {
+		free(_archive_toc);
+		_archive_toc = 0;
 	}
 }
 
-static uint8_t *extract_file(const uint8_t *p) {
-	uint32_t pos = _archiveTOCpos + READ_BE_UINT32(p + 4);
-	fseek(_archiveFileHandle, pos, SEEK_SET);
-
-	uint32_t size = READ_BE_UINT32(p + 8);
-	uint8_t *buf = (uint8_t *)malloc(size);
-	if (buf) {
-		fread(buf, size, 1, _archiveFileHandle);
-		const uint8_t type = p[16];
-		assert(type == 2); // uncompressed data
+static char *extract_script(uint32_t offset, uint32_t size) {
+	char *buf = (char *)malloc(size);
+	if (!buf) {
+		fprintf(stderr, "Failed to allocate %d bytes\n", size);
+	} else {
+		fseek(_archive_fp, offset, SEEK_SET);
+		fread(buf, size, 1, _archive_fp);
 	}
 	return buf;
 }
 
 static void add_paths() {
-	for (uint8_t *p = _archiveTOCbuf; p < _archiveTOCbufend; p += READ_BE_UINT32(p)) {
+	for (uint8_t *p = _archive_toc; p < _archive_tocend; p += READ_BE_UINT32(p)) {
 		if (p[17] != 'z') {
 			continue;
 		}
 		char buf[512];
-		int offset = _archiveTOCpos + READ_BE_UINT32(p + 4);
-		snprintf(buf, sizeof(buf), "sys.path.append(r\"%s?%d\")", _archiveFilePath, offset);
+		const uint32_t offset = _archive_offset + READ_BE_UINT32(p + 4);
+		snprintf(buf, sizeof(buf), "import sys; sys.path.append(r\"%s?%d\")", _archive_path, offset);
 		PyRun_SimpleString(buf);
 	}
+	PyRun_SimpleString("import sys; sys.path.append('yaga')");
 }
 
-static void set_argv() {
-//	char buf[512];
-//	snprintf(buf, sizeof(buf), "import sys; del sys.path[%d:];", 0);
-//	PyRun_SimpleString(buf);
-
+static void set_argv(int argc, char *args[]) {
 	PyObject *argv = PyList_New(0);
-	PyObject *obj = Py_BuildValue("s", _archiveFilePath);
-	PyList_Append(argv, obj);
-//	obj = Py_BuildValue("s", "-l"); // log
-	obj = Py_BuildValue("s", "-w"); // window
-	PyList_Append(argv, obj);
+	for (int i = 0; i < argc; ++i) {
+		PyObject *obj = Py_BuildValue("s", args[i]);
+		PyList_Append(argv, obj);
+	}
 
 	PyObject *module = PyImport_ImportModule("sys");
 	PyObject_SetAttrString(module, "argv", argv);
@@ -96,22 +88,20 @@ static void set_argv() {
 		PyErr_Print();
 		PyErr_Clear();
 	}
-
-	PyRun_SimpleString("import sys; sys.path.append('yaga')");
 }
 
 static void unmarshall_modules() {
 	PyObject *module = PyImport_ImportModule("marshal");
 	PyObject *moduleDict = PyModule_GetDict(module);
 	PyObject *loadMethod = PyDict_GetItemString(moduleDict, "load");
-	PyObject *fileObject = PyFile_FromFile(_archiveFileHandle, _archiveFilePath, "rb+", 0);
+	PyObject *fileObject = PyFile_FromFile(_archive_fp, _archive_path, "rb+", 0);
 
-	for (uint8_t *p = _archiveTOCbuf; p < _archiveTOCbufend; p += READ_BE_UINT32(p)) {
+	for (uint8_t *p = _archive_toc; p < _archive_tocend; p += READ_BE_UINT32(p)) {
 		if (p[17] != 'm') {
 			continue;
 		}
-		const int offset = READ_BE_UINT32(p + 4);
-		fseek(_archiveFileHandle, _archiveTOCpos + offset + 8, SEEK_SET);
+		const uint32_t offset = _archive_offset + READ_BE_UINT32(p + 4) + 8;
+		fseek(_archive_fp, offset, SEEK_SET);
 		char *moduleName = (char *)p + 18;
 		PyObject *objectCode = PyObject_CallFunction(loadMethod, "O", fileObject);
 		PyObject *code = PyImport_ExecCodeModule(moduleName, objectCode);
@@ -119,46 +109,41 @@ static void unmarshall_modules() {
 			PyErr_Print();
 			PyErr_Clear();
 		}
-		assert(code != 0);
 	}
 }
 
 static void execute_scripts() {
-	for (const uint8_t *p = _archiveTOCbuf; p < _archiveTOCbufend; p += READ_BE_UINT32(p)) {
+	for (uint8_t *p = _archive_toc; p < _archive_tocend; p += READ_BE_UINT32(p)) {
 		if (p[17] != 's') {
 			continue;
 		}
-		char *scriptData = (char *)extract_file(p);
-		PyRun_SimpleString(scriptData);
+		const uint32_t offset = _archive_offset + READ_BE_UINT32(p + 4);
+		const uint32_t size = READ_BE_UINT32(p + 8);
+		assert(p[16] == 2); /* uncompressed data */
+		char *script = (char *)extract_script(offset, size);
+		PyRun_SimpleString(script);
 		if (PyErr_Occurred()) {
 			PyErr_Print();
 			PyErr_Clear();
 		}
-		free(scriptData);
+		free(script);
 	}
-}
-
-static void reset_env() {
-	// putenv("PYTHONPATH=");
-	// putenv("PYTHONHOME=");
 }
 
 void inityagahost();
 void initzlib();
 
-void Installer_Main(const char *filePath) {
-	_archiveFilePath = filePath;
+void Installer_Main(int argc, char *argv[]) {
+	_archive_path = argv[0];
 	open_archive();
-	reset_env();
-	Py_SetProgramName(_archiveFilePath);
+	Py_SetProgramName(_archive_path);
 	Py_Initialize();
-	set_argv();
+	set_argv(argc, argv);
 	add_paths();
 	inityagahost();
 	initzlib();
 	unmarshall_modules();
 	execute_scripts();
-
 	close_archive();
 	Py_Finalize();
 }

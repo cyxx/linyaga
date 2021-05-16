@@ -1,6 +1,7 @@
 
 #include <Python.h>
 #include "animation.h"
+#include "font.h"
 #include "mixer.h"
 #include "resource.h"
 #include "sys.h"
@@ -72,7 +73,7 @@ static PyObject *yagahost_setscreensize(PyObject *self, PyObject *args) {
 		return 0;
 	}
 	//fprintf(stdout, "setScreenSize %d,%d,%d\n", w, h, fmt);
-	System_set_screen_size(w, h, "", 1, "linear", false);
+	System_SetScreenSize(w, h, "", 1, "linear", false);
 	_screenBuffer = (uint32_t *)malloc(w * h * sizeof(uint32_t));
 	_screenW = w;
 	_screenH = h;
@@ -85,7 +86,7 @@ static PyObject *yagahost_clearscreen(PyObject *self, PyObject *args) {
 }
 
 static PyObject *yagahost_updatescreen(PyObject *self, PyObject *args) {
-	System_update_screen(_screenBuffer, 1);
+	System_UpdateScreen(_screenBuffer, 1);
 	Py_RETURN_NONE;
 }
 
@@ -95,7 +96,7 @@ static PyObject *yagahost_setscreentitle(PyObject *self, PyObject *args) {
 	if (!PyArg_ParseTuple(args, "s", &name)) {
 		return 0;
 	}
-	System_set_screen_title(name);
+	System_SetScreenTitle(name);
 	Py_RETURN_NONE;
 }
 
@@ -109,6 +110,59 @@ static PyObject *yagahost_getanimationframescount(PyObject *self, PyObject *args
 	if (!(anim < 0)) {
 		const int frames_count = Animation_GetFramesCount(anim);
 		return PyInt_FromLong(frames_count);
+	}
+	return PyInt_FromLong(0);
+}
+
+static PyObject *yagahost_getanimationframelayerscount(PyObject *self, PyObject *args) {
+	int res, frame;
+
+	if (!PyArg_ParseTuple(args, "ii", &res, &frame)) {
+		return 0;
+	}
+	const int anim = Resource_GetAnimationIndex(res);
+	if (!(anim < 0)) {
+		const int layers_count = Animation_GetFrameLayersCount(anim, frame);
+		return PyInt_FromLong(layers_count);
+	}
+	return PyInt_FromLong(0);
+}
+
+static PyObject *yagahost_getanimationframerect(PyObject *self, PyObject *args) {
+	int res, frame;
+
+	if (!PyArg_ParseTuple(args, "ii", &res, &frame)) {
+		return 0;
+	}
+	const int anim = Resource_GetAnimationIndex(res);
+	if (!(anim < 0)) {
+		int x, y, w, h;
+		Animation_GetFrameRect(anim, frame, &x, &y, &w, &h);
+		PyObject *obj = PyDict_New();
+		PyDict_SetItemString(obj, "x", PyInt_FromLong(x));
+		PyDict_SetItemString(obj, "y", PyInt_FromLong(y));
+		PyDict_SetItemString(obj, "w", PyInt_FromLong(w));
+		PyDict_SetItemString(obj, "h", PyInt_FromLong(h));
+		return obj;
+	}
+	Py_RETURN_NONE;
+}
+
+static PyObject *yagahost_getanimationframelayerrect(PyObject *self, PyObject *args) {
+	int res, frame, layer;
+
+	if (!PyArg_ParseTuple(args, "iii", &res, &frame, &layer)) {
+		return 0;
+	}
+	const int anim = Resource_GetAnimationIndex(res);
+	if (!(anim < 0)) {
+		const struct layer_t *l = Animation_GetLayer(anim, frame, layer);
+		PyObject *obj = PyDict_New();
+		PyDict_SetItemString(obj, "x", PyInt_FromLong(l->x));
+		PyDict_SetItemString(obj, "y", PyInt_FromLong(l->y));
+		PyDict_SetItemString(obj, "w", PyInt_FromLong(l->w));
+		PyDict_SetItemString(obj, "h", PyInt_FromLong(l->h));
+		return obj;
 	}
 	Py_RETURN_NONE;
 }
@@ -292,6 +346,54 @@ static PyObject *yagahost_setcursor(PyObject *self, PyObject *args) {
 	Py_RETURN_NONE;
 }
 
+static PyObject *yagahost_loadfont(PyObject *self, PyObject *args) {
+	int font = -1;
+	int res, first_ascii, last_ascii, space_ascii;
+
+	if (!PyArg_ParseTuple(args, "iiii", &res, &first_ascii, &last_ascii, &space_ascii)) {
+		return 0;
+	}
+	const int anim = Resource_GetAnimationIndex(res);
+	if (!(anim < 0)) {
+		struct layer_t *layer = Animation_GetLayer(anim, 0, 0);
+		if (layer) {
+			font = Font_Load(layer->rgba, layer->w, layer->h, first_ascii, last_ascii, space_ascii);
+		}
+	}
+	return PyInt_FromLong(font);
+}
+
+static PyObject *yagahost_drawfontchar(PyObject *self, PyObject *args) {
+	int font, chr, x, y;
+
+	if (!PyArg_ParseTuple(args, "iiii", &font, &chr, &x, &y)) {
+		return 0;
+	}
+	struct surface_t surface = {
+		_screenBuffer,
+		_screenW,
+		_screenH
+	};
+	Font_DrawChar(font, chr, &surface, x, y);
+	Py_RETURN_NONE;
+}
+
+static PyObject *yagahost_getfontcharrect(PyObject *self, PyObject *args) {
+	int font, chr;
+
+	if (!PyArg_ParseTuple(args, "ii", &font, &chr)) {
+		return 0;
+	}
+	int x, y, w, h;
+	Font_GetCharRect(font, chr, &x, &y, &w, &h);
+	PyObject *obj = PyDict_New();
+	PyDict_SetItemString(obj, "x", PyInt_FromLong(x));
+	PyDict_SetItemString(obj, "y", PyInt_FromLong(y));
+	PyDict_SetItemString(obj, "w", PyInt_FromLong(w));
+	PyDict_SetItemString(obj, "h", PyInt_FromLong(h));
+	return obj;
+}
+
 static PyMethodDef yagahost_methods[] = {
 	{ "HasAsset", yagahost_hasasset, METH_VARARGS, "" },
 	{ "LoadAsset", yagahost_loadasset, METH_VARARGS, "" },
@@ -302,6 +404,9 @@ static PyMethodDef yagahost_methods[] = {
 	{ "UpdateScreen", yagahost_updatescreen, METH_VARARGS, "" },
 	{ "SetScreenTitle", yagahost_setscreentitle, METH_VARARGS, "" },
 	{ "GetAnimationFramesCount", yagahost_getanimationframescount, METH_VARARGS, "" },
+	{ "GetAnimationFrameLayersCount", yagahost_getanimationframelayerscount, METH_VARARGS, "" },
+	{ "GetAnimationFrameRect", yagahost_getanimationframerect, METH_VARARGS, "" },
+	{ "GetAnimationFrameLayerRect", yagahost_getanimationframelayerrect, METH_VARARGS, "" },
 	{ "DrawAnimationFrame", yagahost_drawanimationframe, METH_VARARGS, "" },
 	{ "EnableAnimationFrameLayer", yagahost_enableanimationframelayer, METH_VARARGS, "" },
 	{ "PlayAudio", yagahost_playaudio, METH_VARARGS, "" },
@@ -310,7 +415,63 @@ static PyMethodDef yagahost_methods[] = {
 	{ "PollEvent", yagahost_pollevent, METH_VARARGS, "" },
 	{ "LoadCursor", yagahost_loadcursor, METH_VARARGS, "" },
 	{ "SetCursor", yagahost_setcursor, METH_VARARGS, "" },
+	{ "LoadFont", yagahost_loadfont, METH_VARARGS, "" },
+	{ "DrawFontChar", yagahost_drawfontchar, METH_VARARGS, "" },
+	{ "GetFontCharRect", yagahost_getfontcharrect, METH_VARARGS, "" },
 	{ 0, 0, 0, 0 }
+};
+
+static const struct {
+	char *name;
+	int value;
+} _events[] = {
+	{ "EVENT_QUIT", EVENT_QUIT },
+	{ "EVENT_MOUSE_MOTION", EVENT_MOUSE_MOTION },
+	{ "EVENT_MOUSE_BUTTON_DOWN", EVENT_MOUSE_BUTTON_DOWN },
+	{ "EVENT_MOUSE_BUTTON_UP", EVENT_MOUSE_BUTTON_UP },
+	{ "EVENT_KEY_DOWN", EVENT_KEY_DOWN },
+	{ "EVENT_KEY_UP", EVENT_KEY_UP },
+	{ "EVENT_WINDOW_FOCUS", EVENT_WINDOW_FOCUS },
+	{ 0, 0 }
+};
+
+static const struct {
+	char *name;
+	int value;
+} _keys[] = {
+	{ "KEY_CODES_BEGIN", KEYCODE_FIRST },
+	{ "KEY_ESCAPE", KEYCODE_ESCAPE },
+	{ "KEY_F1", KEYCODE_F1 },
+	{ "KEY_F2", KEYCODE_F2 },
+	{ "KEY_F3", KEYCODE_F3 },
+	{ "KEY_F4", KEYCODE_F4 },
+	{ "KEY_F5", KEYCODE_F5 },
+	{ "KEY_F6", KEYCODE_F6 },
+	{ "KEY_F7", KEYCODE_F7 },
+	{ "KEY_F8", KEYCODE_F8 },
+	{ "KEY_F9", KEYCODE_F9 },
+	{ "KEY_F10", KEYCODE_F10 },
+	{ "KEY_F11", KEYCODE_F11 },
+	{ "KEY_F12", KEYCODE_F12 },
+	{ "KEY_BACKSPACE", KEYCODE_BACKSPACE },
+	{ "KEY_TAB", KEYCODE_TAB },
+	// { "KEY_CAPS", KEYCODE_CAPS },
+	{ "KEY_ENTER", KEYCODE_ENTER },
+	{ "KEY_SHIFT", KEYCODE_SHIFT },
+	{ "KEY_CONTROL", KEYCODE_CONTROL },
+	{ "KEY_ALT", KEYCODE_ALT },
+	// { "KEY_PAUSE", KEYCODE_PAUSE },
+	// { "KEY_INSERT", KEYCODE_INSERT },
+	// { "KEY_DELETE", KEYCODE_DELETE },
+	// { "KEY_HOME", KEYCODE_HOME },
+	// { "KEY_END", KEYCODE_END },
+	// { "KEY_PGUP", KEYCODE_PGUP },
+	// { "KEY_PGDOWN", KEYCODE_PGDOWN },
+	{ "KEY_UP", KEYCODE_UP },
+	{ "KEY_DOWN", KEYCODE_DOWN },
+	{ "KEY_LEFT", KEYCODE_LEFT },
+	{ "KEY_RIGHT", KEYCODE_RIGHT },
+	{ 0, 0 }
 };
 
 void inityagahost(void) { // PyMODINIT_FUNC
@@ -321,13 +482,12 @@ void inityagahost(void) { // PyMODINIT_FUNC
 		return;
 	}
 
-	PyModule_AddIntConstant(m, "EVENT_QUIT", EVENT_QUIT);
-	PyModule_AddIntConstant(m, "EVENT_MOUSE_MOTION", EVENT_MOUSE_MOTION);
-	PyModule_AddIntConstant(m, "EVENT_MOUSE_BUTTON_DOWN", EVENT_MOUSE_BUTTON_DOWN);
-	PyModule_AddIntConstant(m, "EVENT_MOUSE_BUTTON_UP", EVENT_MOUSE_BUTTON_UP);
-	PyModule_AddIntConstant(m, "EVENT_KEY_DOWN", EVENT_KEY_DOWN);
-	PyModule_AddIntConstant(m, "EVENT_KEY_UP", EVENT_KEY_UP);
-	PyModule_AddIntConstant(m, "EVENT_WINDOW_FOCUS", EVENT_WINDOW_FOCUS);
+	for (int i = 0; _events[i].name; ++i) {
+		PyModule_AddIntConstant(m, _events[i].name, _events[i].value);
+	}
+	for (int i = 0; _keys[i].name; ++i) {
+		PyModule_AddIntConstant(m, _keys[i].name, _keys[i].value);
+	}
 
 	if (0) {
 		System_Init();

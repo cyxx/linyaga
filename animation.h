@@ -4,11 +4,6 @@
 
 #include "intern.h"
 
-struct surface_t {
-	uint32_t *buffer;
-	int w, h;
-};
-
 struct layer_t {
 	int x, y, w, h;
 	int mask, state;
@@ -45,6 +40,8 @@ int Animation_Load(FILE *fp, const char *name);
 int Animation_Free(int anim);
 
 int Animation_GetFramesCount(int anim);
+int Animation_GetFrameLayersCount(int anim, int frame);
+int Animation_GetFrameRect(int anim, int frame, int *x, int *y, int *w, int *h);
 struct layer_t *Animation_GetLayer(int anim, int frame, int layer);
 
 int Animation_Seek(int anim, int frame);

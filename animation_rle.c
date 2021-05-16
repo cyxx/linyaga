@@ -90,7 +90,6 @@ int Animation_Load_RLE(FILE *fp, struct anim_t *anim, FreeFrameProc frameProc, F
 		uint8_t frame_hdr[16];
 		fread(frame_hdr, 1, sizeof(frame_hdr), fp);
 		frame->layers_count = READ_LE_UINT32(frame_hdr + 12);
-		// fprintf(stdout, "layers count %d\n", frame->layers_count);
 
 		struct layer_t *previous_layer = 0;
 		for (int j = 0; j < frame->layers_count; ++j) {
@@ -120,7 +119,6 @@ int Animation_Load_RLE(FILE *fp, struct anim_t *anim, FreeFrameProc frameProc, F
 
 			layer->w = fread_le32(fp);
 			layer->h = fread_le32(fp);
-			// fprintf(stdout, "layer %d,%d\n", layer->w, layer->h);
 
 			const uint32_t layer_flags = fread_le32(fp);
 

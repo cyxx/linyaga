@@ -10,6 +10,11 @@
 #include <string.h>
 #include <stdbool.h>
 
+struct surface_t {
+	uint32_t *buffer;
+	int w, h;
+};
+
 #undef MIN
 static inline int MIN(int a, int b) {
 	return (a < b) ? a : b;
@@ -58,6 +63,21 @@ static inline uint16_t fread_le16(FILE *fp) {
 	uint8_t buf[2];
 	fread(buf, 1, sizeof(buf), fp);
 	return READ_LE_UINT16(buf);
+}
+
+static inline uint32_t blend(uint32_t a, uint32_t b) {
+	const uint8_t alpha = b >> 24;
+	switch (alpha) {
+	case 0:
+		return a;
+	case 255:
+		return b;
+	}
+	const uint32_t rb1 = ((a & 0xFF00FF) * (255 - alpha)) >> 8;
+	const uint32_t rb2 = ((b & 0xFF00FF) * alpha) >>  8;
+	const uint32_t g1  = ((a & 0x00FF00) * (255 - alpha)) >> 8;
+	const uint32_t g2  = ((b & 0x00FF00) * alpha) >> 8;
+	return ((rb1 | rb2) & 0xFF00FF) | ((g1 | g2) & 0x00FF00);
 }
 
 #endif

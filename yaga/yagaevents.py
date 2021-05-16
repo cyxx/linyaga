@@ -4,24 +4,25 @@ import time
 import yagahost
 
 class KeyCodes:
-	KEY_ENTER = 13
-	KEY_ESCAPE = 27
-	KEY_UP = 2
-	KEY_DOWN = 3
-	KEY_LEFT = 4
-	KEY_RIGHT = 5
-	KEY_CONTROL = 6
-	KEY_SHIFT = 7
-	KEY_BACKSPACE = 8
-	KEY_F1 = 21
-	KEY_F2 = 22
-	KEY_F3 = 23
-	KEY_F4 = 24
-	KEY_F5 = 25
-	KEY_F6 = 26
-	KEY_F7 = 27
-	KEY_F8 = 28
-	KEY_F9 = 29
+	KEY_CODES_BEGIN = yagahost.KEY_CODES_BEGIN
+	KEY_ENTER = yagahost.KEY_ENTER
+	KEY_ESCAPE = yagahost.KEY_ESCAPE
+	KEY_UP = yagahost.KEY_UP
+	KEY_DOWN = yagahost.KEY_DOWN
+	KEY_LEFT = yagahost.KEY_LEFT
+	KEY_RIGHT = yagahost.KEY_RIGHT
+	KEY_CONTROL = yagahost.KEY_CONTROL
+	KEY_SHIFT = yagahost.KEY_SHIFT
+	KEY_BACKSPACE = yagahost.KEY_BACKSPACE
+	KEY_F1 = yagahost.KEY_F1
+	KEY_F2 = yagahost.KEY_F2
+	KEY_F3 = yagahost.KEY_F3
+	KEY_F4 = yagahost.KEY_F4
+	KEY_F5 = yagahost.KEY_F5
+	KEY_F6 = yagahost.KEY_F6
+	KEY_F7 = yagahost.KEY_F7
+	KEY_F8 = yagahost.KEY_F8
+	KEY_F9 = yagahost.KEY_F9
 
 class EEventClass:
 	CLASS_RENDER_TARGET = 1
@@ -46,9 +47,9 @@ class ERenderTargetEvent:
 class EInputEvent:
 	IEVENT_AXIS_POS_X = 1
 	IEVENT_AXIS_POS_Y = 2
-	IEVENT_BUTTON_DOWN = 3
+	IEVENT_BUTTON_PRESS = 3
+	IEVENT_BUTTON_DOWN = 3 # same code as _PRESS
 	IEVENT_BUTTON_UP = 4
-	IEVENT_BUTTON_PRESS = 5
 
 class ETimerEvent:
 	TIMER_TICK = 1
@@ -188,10 +189,6 @@ class Event(object):
 		self.deviceID = 0 # targetRender.identity
 		self.elementID = 0 # keycode
 
-def convertKeyCode(code):
-	print('keycode:' + str(code))
-	return code
-
 class IMouseInputDevice(object):
 	def __init__(self, device):
 		pass
@@ -261,13 +258,13 @@ class EventManagerImpl(object):
 							recvr.Raise(ev)
 				elif event['type'] == yagahost.EVENT_KEY_DOWN:
 					ev = Event(EEventClass.CLASS_KEYBOARD, EInputEvent.IEVENT_BUTTON_DOWN)
-					ev.elementID = convertKeyCode(event['code'])
+					ev.elementID = event['code']
 					for recvr in self.events:
 						if (recvr._eventsMask & EEventClass.CLASS_KEYBOARD) != 0:
 							recvr.Raise(ev)
 				elif event['type'] == yagahost.EVENT_KEY_UP:
 					ev = Event(EEventClass.CLASS_KEYBOARD, EInputEvent.IEVENT_BUTTON_UP)
-					ev.elementID = convertKeyCode(event['code'])
+					ev.elementID = event['code']
 					for recvr in self.events:
 						if (recvr._eventsMask & EEventClass.CLASS_KEYBOARD) != 0:
 							recvr.Raise(ev)

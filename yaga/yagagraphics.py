@@ -68,7 +68,7 @@ class RenderTarget(IRenderTarget):
 		yagahost.ClearScreen()
 	def RenderEnd(self):
 		yagahost.UpdateScreen()
-	def RenderImage(self, imageBuffer, opacity, dstRect, srcRect):
+	def RenderImage(self, image, opacity, dstRect, srcRect):
 		print('STUB: RenderTarget.RenderImage')
 	def gettitle(self):
 		return self._title
@@ -107,11 +107,22 @@ class Camera(object):
 		pass
 
 class Image(object):
-	def __init__(self, w, h):
-		self.pixelFmt = PixelFormat.PXL_R5G6B5
-		self.imgData = [ 0 ] * (w * h)
-		self.width = w
-		self.height = h
+	def __init__(self, *args):
+		if len(args) == 2:
+			w = args[0]
+			h = args[1]
+			self.pixelFmt = PixelFormat.PXL_A8R8G8B8
+			self.imgData = [ 0 ] * (w * h)
+			self.width = w
+			self.height = h
+			self._anim = None
+		else:
+			self._anim  = args[0]
+			self._frame = args[1]
+			self._layer = args[2]
+			r = yagahost.GetAnimationFrameLayerRect(args[0].num, args[1], args[2])
+			self.width  = r['w']
+			self.height = r['h']
 	def Fill(self, color, r):
 		pass
 	def Composite(self, image, opacity, dstRect, srcRect):
@@ -156,30 +167,27 @@ class CompressionType:
 	COMPRESS_YRLE = 1
 
 class ImageLayer(object):
-	def __init__(self):
-		self.image = Image(0, 0)
+	def __init__(self, res, frame, layer):
+		self.image = Image(res, frame, layer)
 
 class ImageFrame(object):
-	def __init__(self, num):
-		self.layers = [ ImageLayer() ]
+	def __init__(self, res, num):
+		self.res = res
+		count = yagahost.GetAnimationFrameLayersCount(res.num, num)
+		self.layers = [ ImageLayer(res, num, x) for x in range(count) ]
 
 class IImageAnim(object):
 	def __init__(self, res):
 		self.res = res
 		if res:
 			count = yagahost.GetAnimationFramesCount(res.num)
-			if count:
-				self.frames = [ ImageFrame(x) for x in range(count) ]
-				self.framesPerSecond = 0
-			else:
-				print('WARNING: res ' + str(res) + ' has no frame')
+			self.frames = [ ImageFrame(res, x) for x in range(count) ]
+			self.framesPerSecond = 0
 		else:
 			print('WARNING: res is None')
 	def Compress(self, compressionType, flag):
-		print('STUB: IImageAnim.Compress')
+		#print('STUB: IImageAnim.Compress')
 		return self
-	def __str__(self):
-		return 'IImageAnim res:' + str(self.res)
 
 class IImage(object):
 	def __init__(self, img):

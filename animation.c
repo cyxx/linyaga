@@ -5,16 +5,19 @@
 
 static struct layer_t _layers[MAX_LAYERS];
 static struct layer_t *_next_free_layer;
+static int _total_layers_count;
 
-#define MAX_FRAMES 512
+#define MAX_FRAMES 768
 
 static struct frame_t _frames[MAX_FRAMES];
 static struct frame_t *_next_free_frame;
+static int _total_frames_count;
 
 #define MAX_ANIMATIONS 64
 
 static struct anim_t _animations[MAX_ANIMATIONS];
 static struct anim_t *_next_free_animation;
+static int _total_animations_count;
 
 
 static struct layer_t *find_free_layer() {
@@ -22,6 +25,7 @@ static struct layer_t *find_free_layer() {
 	if (layer) {
 		_next_free_layer = layer->next_free;
 		layer->next_free = 0;
+		++_total_layers_count;
 	} else {
 		fprintf(stderr, "find_free_layer MAX_LAYERS\n");
 	}
@@ -29,8 +33,10 @@ static struct layer_t *find_free_layer() {
 }
 
 static void free_layer(struct layer_t *layer) {
+	layer->next_layer = 0;
 	layer->next_free = _next_free_layer;
 	_next_free_layer = layer;
+	--_total_layers_count;
 }
 
 static struct frame_t *find_free_frame() {
@@ -38,6 +44,7 @@ static struct frame_t *find_free_frame() {
 	if (frame) {
 		_next_free_frame = frame->next_free;
 		frame->next_free = 0;
+		++_total_frames_count;
 	} else {
 		fprintf(stderr, "find_free_frame MAX_FRAMES\n");
 	}
@@ -48,6 +55,7 @@ static void FreeFrame(struct frame_t *frame) {
 	frame->next_frame = 0;
 	frame->next_free = _next_free_frame;
 	_next_free_frame = frame;
+	--_total_frames_count;
 }
 
 static struct anim_t *find_free_animation() {
@@ -55,6 +63,7 @@ static struct anim_t *find_free_animation() {
 	if (animation) {
 		_next_free_animation = animation->next_free;
 		animation->next_free = 0;
+		++_total_animations_count;
 	} else {
 		fprintf(stderr, "find_free_animation MAX_ANIMATIONS\n");
 	}
@@ -64,6 +73,7 @@ static struct anim_t *find_free_animation() {
 static void free_animation(struct anim_t *animation) {
 	animation->next_free = _next_free_animation;
 	_next_free_animation = animation;
+	--_total_animations_count;
 }
 
 int Animation_Init() {
@@ -83,6 +93,7 @@ int Animation_Init() {
 }
 
 int Animation_Fini() {
+	fprintf(stdout, "Total animations %d frames %d layers %d\n", _total_animations_count, _total_frames_count, _total_layers_count);
 	return 0;
 }
 
@@ -106,13 +117,14 @@ int Animation_Load(FILE *fp, const char *name) {
 				return animation - _animations;
 			}
 		}
-		fprintf(stderr, "Invalid animation '%s'\n", name);
+		fprintf(stderr, "Unsupported animation '%s'\n", name);
 		free_animation(animation);
 	}
 	return -1;
 }
 
 int Animation_Free(int anim) {
+	assert(!(anim < 0));
 	for (struct frame_t *frame = _animations[anim].first_frame; frame; ) {
 		struct frame_t *next_frame = frame->next_frame;
 		for (struct layer_t *layer = frame->first_layer; layer; ) {
@@ -131,10 +143,57 @@ int Animation_Free(int anim) {
 }
 
 int Animation_GetFramesCount(int anim) {
+	assert(!(anim < 0));
 	return _animations[anim].frames_count;
 }
 
+int Animation_GetFrameLayersCount(int anim, int frame_num) {
+	assert(!(anim < 0));
+	struct frame_t *frame = _animations[anim].first_frame;
+	for (; frame_num-- != 0 && frame; frame = frame->next_frame);
+	assert(frame);
+	return frame->layers_count;
+}
+
+int Animation_GetFrameRect(int anim, int frame_num, int *x, int *y, int *w, int *h) {
+	assert(!(anim < 0));
+	struct frame_t *frame = _animations[anim].first_frame;
+	for (; frame_num-- != 0 && frame; frame = frame->next_frame);
+	assert(frame);
+	int x1 = 640 - 1;
+	int y1 = 480 - 1;
+	int x2 = 0;
+	int y2 = 0;
+	struct layer_t *layer = frame->first_layer;
+	for (; layer; layer = layer->next_layer) {
+		if (layer->x < x1) {
+			x1 = layer->x;
+		}
+		if (layer->y < y1) {
+			y1 = layer->y;
+		}
+		if (layer->x + layer->w > x2) {
+			x2 = layer->x + layer->w;
+		}
+		if (layer->y + layer->h > y2) {
+			y2 = layer->y + layer->h;
+		}
+	}
+	*x = x1;
+	*y = y1;
+	*w = x2 - x1;
+	if (*w < 0) {
+		*w = 0;
+	}
+	*h = y2 - y1;
+	if (*h < 0) {
+		*h = 0;
+	}
+	return 0;
+}
+
 struct layer_t *Animation_GetLayer(int anim, int frame_num, int layer_num) {
+	assert(!(anim < 0));
 	struct frame_t *frame = _animations[anim].first_frame;
 	for (; frame_num-- != 0 && frame; frame = frame->next_frame);
 	assert(frame);
@@ -145,6 +204,7 @@ struct layer_t *Animation_GetLayer(int anim, int frame_num, int layer_num) {
 }
 
 int Animation_Seek(int anim, int frame_num) {
+	assert(!(anim < 0));
 	struct frame_t *frame = _animations[anim].first_frame;
 	for (; frame_num-- != 0 && frame; frame = frame->next_frame);
 	assert(frame);
@@ -153,6 +213,7 @@ int Animation_Seek(int anim, int frame_num) {
 }
 
 int Animation_SetLayer(int anim, int frame_num, const char *name, int state) {
+	assert(!(anim < 0));
 	struct frame_t *frame;
 	if (frame_num < 0) {
 		frame = _animations[anim].current_frame;
@@ -169,21 +230,6 @@ int Animation_SetLayer(int anim, int frame_num, const char *name, int state) {
 		}
 	}
 	return 0;
-}
-
-static uint32_t blend(uint32_t a, uint32_t b) {
-	const uint8_t alpha = b >> 24;
-	switch (alpha) {
-	case 0:
-		return a;
-	case 255:
-		return b;
-	}
-	uint32_t rb1 = ((a & 0xFF00FF) * (255 - alpha)) >>  8;
-	uint32_t rb2 = ((b & 0xFF00FF) * alpha) >>  8;
-	uint32_t g1  = ((a & 0x00FF00) * (255 - alpha)) >> 8;
-	uint32_t g2  = ((b & 0x00FF00) * alpha) >> 8;
-	return ((rb1 | rb2) & 0xFF00FF) | ((g1 | g2) & 0x00FF00);
 }
 
 static void draw_layer(struct layer_t *layer, struct surface_t *s, int x, int y, int *x1, int *y1, int *x2, int *y2) {
@@ -242,6 +288,7 @@ static int is_phoneme(struct layer_t *layer, int mask) {
 }
 
 int Animation_Draw(int anim, struct surface_t *s, int dx, int dy, int mask, int *x, int *y, int *w, int *h) {
+	assert(!(anim < 0));
 	struct frame_t *frame = _animations[anim].current_frame;
 	assert(frame);
 	int x1 = 640 - 1;
@@ -260,6 +307,12 @@ int Animation_Draw(int anim, struct surface_t *s, int dx, int dy, int mask, int 
 	*x = x1;
 	*y = y1;
 	*w = x2 - x1 + 1;
+	if (*w < 0) {
+		*w = 0;
+	}
 	*h = y2 - y1 + 1;
+	if (*h < 0) {
+		*h = 0;
+	}
 	return 0;
 }

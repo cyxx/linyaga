@@ -31,17 +31,44 @@ struct event_t {
 	} data;
 };
 
-typedef void (*sys_audio_cb)(void *, uint8_t *data, int len);
+enum {
+	KEYCODE_FIRST = 0x100,
+	KEYCODE_ESCAPE = KEYCODE_FIRST,
+	KEYCODE_F1,
+	KEYCODE_F2,
+	KEYCODE_F3,
+	KEYCODE_F4,
+	KEYCODE_F5,
+	KEYCODE_F6,
+	KEYCODE_F7,
+	KEYCODE_F8,
+	KEYCODE_F9,
+	KEYCODE_F10,
+	KEYCODE_F11,
+	KEYCODE_F12,
+	KEYCODE_BACKSPACE,
+	KEYCODE_TAB,
+	KEYCODE_ENTER,
+	KEYCODE_SHIFT,
+	KEYCODE_CONTROL,
+	KEYCODE_ALT,
+	KEYCODE_UP,
+	KEYCODE_DOWN,
+	KEYCODE_LEFT,
+	KEYCODE_RIGHT
+};
+
+typedef void (*SysAudioCb)(void *, uint8_t *data, int len);
 
 int	System_Init();
 void	System_Fini();
-void	System_set_screen_size(int w, int h, const char *caption, int scale, const char *filter, bool fullscreen);
-void	System_set_screen_title(const char *caption);
-void	System_update_screen(const void *p, int present);
+void	System_SetScreenSize(int w, int h, const char *caption, int scale, const char *filter, bool fullscreen);
+void	System_SetScreenTitle(const char *caption);
+void	System_UpdateScreen(const void *p, int present);
 int	System_LoadCursor(const uint32_t *rgba, int w, int h);
 void	System_SetCursor(int num);
 bool	System_PollEvent(struct event_t *ev);
-void	System_StartAudio(sys_audio_cb callback, void *param);
+void	System_StartAudio(SysAudioCb callback, void *param);
 void	System_StopAudio();
 void	System_LockAudio();
 void	System_UnlockAudio();

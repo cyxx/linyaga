@@ -2,7 +2,7 @@
 #include <SDL.h>
 #include "sys.h"
 
-#define MAX_CURSORS 8
+#define MAX_CURSORS 16
 
 struct cursor_t {
 	SDL_Cursor *cursor;
@@ -49,7 +49,7 @@ void System_Fini() {
 	SDL_Quit();
 }
 
-void System_set_screen_size(int w, int h, const char *caption, int scale, const char *filter, bool fullscreen) {
+void System_SetScreenSize(int w, int h, const char *caption, int scale, const char *filter, bool fullscreen) {
 	assert(_screen_w == 0 && _screen_h == 0); // abort if called more than once
 	_screen_w = w;
 	_screen_h = h;
@@ -70,7 +70,7 @@ void System_set_screen_size(int w, int h, const char *caption, int scale, const 
 	_texture = SDL_CreateTexture(_renderer, pfmt, SDL_TEXTUREACCESS_STREAMING, _screen_w, _screen_h);
 }
 
-void System_update_screen(const void *p, int present) {
+void System_UpdateScreen(const void *p, int present) {
 	SDL_UpdateTexture(_texture, 0, p, _screen_w * sizeof(uint32_t));
 	if (present) {
 		SDL_RenderClear(_renderer);
@@ -79,12 +79,15 @@ void System_update_screen(const void *p, int present) {
 	}
 }
 
-void System_set_screen_title(const char *name) {
+void System_SetScreenTitle(const char *name) {
 	SDL_SetWindowTitle(_window, name);
 }
 
 int System_LoadCursor(const uint32_t *rgba, int w, int h) {
-	assert(_cursors_count < MAX_CURSORS);
+	if (_cursors_count >= MAX_CURSORS) {
+		fprintf(stderr, "System_LoadCursor MAX_CURSORS\n");
+		return -1;
+	}
 	struct cursor_t *cursor = &_cursors[_cursors_count++];
 	cursor->surface = SDL_CreateRGBSurfaceFrom(rgba, w, h, 32, w * sizeof(uint32_t), 0xFF, 0xFF00, 0xFF0000, 0xFF000000);
 	cursor->cursor = SDL_CreateColorCursor(cursor->surface, 1, 1);
@@ -94,6 +97,74 @@ int System_LoadCursor(const uint32_t *rgba, int w, int h) {
 void System_SetCursor(int num) {
 	assert(num < _cursors_count);
 	SDL_SetCursor(_cursors[num].cursor);
+}
+
+static int key_code(const SDL_Keysym *key) {
+	char code = 0;
+	if (key->sym >= SDLK_0 && key->sym <= SDLK_9) {
+		code = '0' + key->sym - SDLK_0;
+	} else if (key->sym >= SDLK_a && key->sym <= SDLK_z) {
+		code = 'A' + key->sym - SDLK_a;
+	} else if (key->scancode == SDL_SCANCODE_0) {
+		code = '0';
+	} else if (key->scancode >= SDL_SCANCODE_1 && key->scancode <= SDL_SCANCODE_9) {
+		code = '1' + key->scancode - SDL_SCANCODE_1;
+	} else if (key->sym == SDLK_SPACE || key->sym == SDLK_KP_SPACE) {
+		code = ' ';
+	} else {
+		switch (key->sym) {
+		case SDLK_ESCAPE:
+			return KEYCODE_ESCAPE;
+		case SDLK_F1:
+			return KEYCODE_F1;
+		case SDLK_F2:
+			return KEYCODE_F2;
+		case SDLK_F3:
+			return KEYCODE_F3;
+		case SDLK_F4:
+			return KEYCODE_F4;
+		case SDLK_F5:
+			return KEYCODE_F5;
+		case SDLK_F6:
+			return KEYCODE_F6;
+		case SDLK_F7:
+			return KEYCODE_F7;
+		case SDLK_F8:
+			return KEYCODE_F8;
+		case SDLK_F9:
+			return KEYCODE_F9;
+		case SDLK_F10:
+			return KEYCODE_F10;
+		case SDLK_F11:
+			return KEYCODE_F11;
+		case SDLK_F12:
+			return KEYCODE_F12;
+		case SDLK_BACKSPACE:
+			return KEYCODE_BACKSPACE;
+		case SDLK_TAB:
+			return KEYCODE_TAB;
+		case SDLK_RETURN:
+			return KEYCODE_ENTER;
+                case SDLK_RSHIFT:
+                case SDLK_LSHIFT:
+			return KEYCODE_SHIFT;
+		case SDLK_RCTRL:
+		case SDLK_LCTRL:
+			return KEYCODE_CONTROL;
+		case SDLK_RALT:
+		case SDLK_LALT:
+			return KEYCODE_ALT;
+		case SDLK_UP:
+			return KEYCODE_UP;
+		case SDLK_DOWN:
+			return KEYCODE_DOWN;
+		case SDLK_LEFT:
+			return KEYCODE_LEFT;
+		case SDLK_RIGHT:
+			return KEYCODE_RIGHT;
+		}
+	}
+	return code;
 }
 
 bool System_PollEvent(struct event_t *event) {
@@ -132,18 +203,18 @@ bool System_PollEvent(struct event_t *event) {
 			return true;
 		case SDL_KEYDOWN:
 			event->type = EVENT_KEY_DOWN;
-			event->data.key_code = ev.key.keysym.sym;
+			event->data.key_code = key_code(&ev.key.keysym);
 			return true;
 		case SDL_KEYUP:
 			event->type = EVENT_KEY_UP;
-			event->data.key_code = ev.key.keysym.sym;
+			event->data.key_code = key_code(&ev.key.keysym);
 			return true;
 		}
 	}
 	return false;
 }
 
-void System_StartAudio(sys_audio_cb callback, void *param) {
+void System_StartAudio(SysAudioCb callback, void *param) {
 	SDL_AudioSpec desired;
 	memset(&desired, 0, sizeof(desired));
 	desired.freq = SYS_AUDIO_FREQ;

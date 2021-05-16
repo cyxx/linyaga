@@ -35,7 +35,6 @@ static void list_filenames(const char *dirname, int dirname_offset) {
 			}
 		}
 		closedir(d);
-		fprintf(stdout, "Found %d files\n", _filenames_count);
 	}
 }
 
@@ -83,6 +82,7 @@ static void list_datafiles(const char *path) {
 			}
 		}
 		closedir(d);
+		fprintf(stdout, "Found %d files\n", _filenames_count);
 		fprintf(stdout, "Found %d zipfiles\n", count);
 	}
 }
@@ -192,7 +192,7 @@ static FILE *open_file(const char *original_name) {
 		}
 	}
 	if (!fp) {
-		fprintf(stdout, "WARNING: Failed to open '%s'\n", name);
+		fprintf(stderr, "Failed to open '%s'\n", name);
 		return 0;
 	}
 	return fp;

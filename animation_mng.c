@@ -89,7 +89,7 @@ static uint32_t *decode_zdata(struct image_t *image, int has_pal) {
 	if (image->zsize == buf_size) { /* uncompressed */
 		rgba = decode_bitmap(image, has_pal, image->zdata, buf_size, bpp);
         } else {
-		uint8_t *buf = (uint8_t *)malloc(buf_size);
+		uint8_t *buf = (uint8_t *)malloc(buf_size + 32);
 		if (!buf) {
 			fprintf(stderr, "Failed to allocate %d bytes\n", buf_size);
 			return 0;
@@ -104,7 +104,7 @@ static uint32_t *decode_zdata(struct image_t *image, int has_pal) {
 		if (ret == Z_OK) {
 			ret = inflate(&z_str, Z_FINISH);
 			if (ret != Z_STREAM_END) {
-				fprintf(stderr, "inflate ret %d\n", ret);
+				fprintf(stderr, "inflate ret:%d bpp:%d w:%d h:%d color:%d zsize:%d\n", ret, bpp, image->w, image->h, image->color, image->zsize);
 			}
 		}
 		if (z_str.total_out != buf_size) {

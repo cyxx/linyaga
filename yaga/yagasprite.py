@@ -23,9 +23,9 @@ class Sprite(ISprite):
 		self.renderRect = yagagraphics.Rect()
 		self.renderMask = 0 | 1
 		self.opacity = 1.
-		self.currentFrame = 0
 		self.frameCount = 1
 		self.loopCount = 0
+		self._currentFrame = 0
 		self._anim = None
 		self._callback = None
 	def Render(self, camera):
@@ -35,9 +35,8 @@ class Sprite(ISprite):
 			assert isinstance(self.position, yagascene.Point)
 			x = int(self.position.x)
 			y = int(self.position.y)
-			r = yagahost.DrawAnimationFrame(self.anim.res.num, self.currentFrame, self.opacity, self.renderMask, x, y)
-			if r:
-				self.renderRect = yagagraphics.Rect(r['x'], r['y'], r['w'], r['h'])
+			r = yagahost.DrawAnimationFrame(self.anim.res.num, self._currentFrame, self.opacity, self.renderMask, x, y)
+			self.renderRect = yagagraphics.Rect(r['x'], r['y'], r['w'], r['h'])
 	def Seek(self, timeOffset):
 		#print('Sprite.Seek')
 		frame = self.currentFrame + 1 # TODO: advance by time
@@ -76,15 +75,26 @@ class Sprite(ISprite):
 		assert self.anim.framesPerSecond != 0
 		if self._callback:
 			self._callback.Event(yagascene.SceneEvents.SCENE_RUN, self)
+	def getcurrentframe(self):
+		return self._currentFrame
+	def setcurrentframe(self, frame):
+		self._currentFrame = frame
+		#r = yagahost.GetAnimationFrameRect(self.anim.res.num, frame)
+		#self.renderRect = yagagraphics.Rect(r['x'], r['y'], r['w'], r['h'])
+	currentFrame = property(getcurrentframe, setcurrentframe)
 	def getanim(self):
 		return self._anim
 	def setanim(self, a):
 		self._anim = a
 		if a.res:
 			self.frameCount = yagahost.GetAnimationFramesCount(a.res.num)
+			r = yagahost.GetAnimationFrameRect(a.res.num, 0)
+			if r:
+				self.renderRect = yagagraphics.Rect(r['x'], r['y'], r['w'], r['h'])
+			else:
+				self.renderRect = yagagraphics.Rect()
 		else:
 			self.frameCount = 0
-		# print('WARNING: Sprite.setanim ' + str(a) + ' framesCount:' + str(self.frameCount))
 	anim = property(getanim, setanim)
 
 class TalkieSpriteTalkiesQueue(object):
