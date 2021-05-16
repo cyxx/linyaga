@@ -66,14 +66,23 @@ static PyObject *yagahost_openasset(PyObject *self, PyObject *args) {
 	Py_RETURN_NONE;
 }
 
+static PyObject *yagahost_setscreenwindowed(PyObject *self, PyObject *args) {
+	int flag;
+
+	if (!PyArg_ParseTuple(args, "i", &flag)) {
+		return 0;
+	}
+	System_SetScreenWindowed(flag);
+	Py_RETURN_NONE;
+}
+
 static PyObject *yagahost_setscreensize(PyObject *self, PyObject *args) {
 	int w, h, fmt;
 
 	if (!PyArg_ParseTuple(args, "iii", &w, &h, &fmt)) {
 		return 0;
 	}
-	//fprintf(stdout, "setScreenSize %d,%d,%d\n", w, h, fmt);
-	System_SetScreenSize(w, h, "", 1, "linear", false);
+	System_SetScreenSize(w, h);
 	_screenBuffer = (uint32_t *)malloc(w * h * sizeof(uint32_t));
 	_screenW = w;
 	_screenH = h;
@@ -167,6 +176,19 @@ static PyObject *yagahost_getanimationframelayerrect(PyObject *self, PyObject *a
 	Py_RETURN_NONE;
 }
 
+static PyObject *yagahost_seekanimationframe(PyObject *self, PyObject *args) {
+	int res, frame;
+
+	if (!PyArg_ParseTuple(args, "ii", &res, &frame)) {
+		return 0;
+	}
+	const int anim = Resource_GetAnimationIndex(res);
+	if (!(anim < 0)) {
+		Animation_Seek(anim, frame);
+	}
+	Py_RETURN_NONE;
+}
+
 static PyObject *yagahost_drawanimationframe(PyObject *self, PyObject *args) {
 	int res, frame;
 	float opacity;
@@ -180,16 +202,14 @@ static PyObject *yagahost_drawanimationframe(PyObject *self, PyObject *args) {
 	const int anim = Resource_GetAnimationIndex(res);
 	//fprintf(stdout, "drawAnimationFrame %d,%d anim %d dx:%d dy:%d\n", res, frame, anim, dx, dy);
 	if (!(anim < 0)) {
-		if (!(frame < 0)) {
-			Animation_Seek(anim, frame);
-		}
 		int x, y, w, h;
 		struct surface_t surface = {
 			_screenBuffer,
 			_screenW,
 			_screenH
 		};
-		Animation_Draw(anim, &surface, dx, dy, mask, &x, &y, &w, &h);
+		const int alpha = (int)(opacity * 256);
+		Animation_Draw(anim, &surface, dx, dy, mask, alpha, &x, &y, &w, &h);
 		// render rect
 		PyObject *obj = PyDict_New();
 		PyDict_SetItemString(obj, "x", PyInt_FromLong(x));
@@ -365,8 +385,9 @@ static PyObject *yagahost_loadfont(PyObject *self, PyObject *args) {
 
 static PyObject *yagahost_drawfontchar(PyObject *self, PyObject *args) {
 	int font, chr, x, y;
+	float opacity;
 
-	if (!PyArg_ParseTuple(args, "iiii", &font, &chr, &x, &y)) {
+	if (!PyArg_ParseTuple(args, "iiiif", &font, &chr, &x, &y, &opacity)) {
 		return 0;
 	}
 	struct surface_t surface = {
@@ -374,7 +395,8 @@ static PyObject *yagahost_drawfontchar(PyObject *self, PyObject *args) {
 		_screenW,
 		_screenH
 	};
-	Font_DrawChar(font, chr, &surface, x, y);
+	const int alpha = (int)(opacity * 256);
+	Font_DrawChar(font, chr, &surface, x, y, alpha);
 	Py_RETURN_NONE;
 }
 
@@ -399,6 +421,7 @@ static PyMethodDef yagahost_methods[] = {
 	{ "LoadAsset", yagahost_loadasset, METH_VARARGS, "" },
 	{ "FreeAsset", yagahost_freeasset, METH_VARARGS, "" },
 	{ "OpenAsset", yagahost_openasset, METH_VARARGS, "" },
+	{ "SetScreenWindowed", yagahost_setscreenwindowed, METH_VARARGS, "" },
 	{ "SetScreenSize", yagahost_setscreensize, METH_VARARGS, "" },
 	{ "ClearScreen", yagahost_clearscreen, METH_VARARGS, "" },
 	{ "UpdateScreen", yagahost_updatescreen, METH_VARARGS, "" },
@@ -407,6 +430,7 @@ static PyMethodDef yagahost_methods[] = {
 	{ "GetAnimationFrameLayersCount", yagahost_getanimationframelayerscount, METH_VARARGS, "" },
 	{ "GetAnimationFrameRect", yagahost_getanimationframerect, METH_VARARGS, "" },
 	{ "GetAnimationFrameLayerRect", yagahost_getanimationframelayerrect, METH_VARARGS, "" },
+	{ "SeekAnimationFrame", yagahost_seekanimationframe, METH_VARARGS, "" },
 	{ "DrawAnimationFrame", yagahost_drawanimationframe, METH_VARARGS, "" },
 	{ "EnableAnimationFrameLayer", yagahost_enableanimationframelayer, METH_VARARGS, "" },
 	{ "PlayAudio", yagahost_playaudio, METH_VARARGS, "" },

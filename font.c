@@ -98,7 +98,7 @@ int Font_GetCharRect(int font_num, uint8_t chr, int *x, int *y, int *w, int *h) 
 	return 0;
 }
 
-int Font_DrawChar(int font_num, uint8_t chr, struct surface_t *s, int x, int y) {
+int Font_DrawChar(int font_num, uint8_t chr, struct surface_t *s, int x, int y, int alpha) {
 	assert(!(font_num < 0));
 	struct font_t *font = &_fonts[font_num];
 	if (!(chr >= font->first_char && chr <= font->last_char)) {
@@ -134,7 +134,7 @@ int Font_DrawChar(int font_num, uint8_t chr, struct surface_t *s, int x, int y) 
 	uint32_t *dst = s->buffer + y * s->w + x;
 	for (int j = 0; j < h; ++j) {
 		for (int i = 0; i < w; ++i) {
-			dst[i] = blend(dst[i], src[i]);
+			dst[i] = blend(dst[i], src[i], alpha);
 		}
 		dst += s->w;
 		src += font->w;

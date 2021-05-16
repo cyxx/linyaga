@@ -48,10 +48,11 @@ class IRenderTarget(object):
 		pass
 
 class RenderTarget(IRenderTarget):
-	def __init__(self, videoMode, targetType):
+	def __init__(self, videoMode, mode):
+		yagahost.SetScreenWindowed(mode != TargetType.TARGET_FULL_SCREEN)
 		yagahost.SetScreenSize(videoMode.width, videoMode.height, videoMode.format)
 		self.identity = 0
-		self.mode = targetType
+		self._mode = mode
 		self._title = ''
 		self._cursors = {}
 	def LoadCursorFile(self, path, resId):
@@ -70,6 +71,12 @@ class RenderTarget(IRenderTarget):
 		yagahost.UpdateScreen()
 	def RenderImage(self, image, opacity, dstRect, srcRect):
 		print('STUB: RenderTarget.RenderImage')
+	def getmode(self):
+		return self._mode
+	def setmode(self, mode):
+		yagahost.SetScreenWindowed(mode != TargetType.TARGET_FULL_SCREEN)
+		self._mode = mode
+	mode = property(getmode, setmode)
 	def gettitle(self):
 		return self._title
 	def settitle(self, s):
@@ -141,6 +148,8 @@ class GraphicsSystemImpl(object):
 		return self.camera
 	def CreateImage(self, w, h, fmt):
 		return Image(w, h)
+	def Check3DAPIVersion(flags):
+		return True
 
 g_graphicsSystem = GraphicsSystemImpl()
 

@@ -86,7 +86,7 @@ static uint32_t *decode_zdata(struct image_t *image, int has_pal) {
 	}
 	uint32_t *rgba = 0;
 	const int buf_size = image->h * (image->w * bpp) + (image->h);
-	if (image->zsize == buf_size) { /* uncompressed */
+	if (image->zsize >= buf_size) { /* uncompressed */
 		rgba = decode_bitmap(image, has_pal, image->zdata, buf_size, bpp);
         } else {
 		uint8_t *buf = (uint8_t *)malloc(buf_size + 32);

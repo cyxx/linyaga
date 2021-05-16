@@ -46,6 +46,6 @@ struct layer_t *Animation_GetLayer(int anim, int frame, int layer);
 
 int Animation_Seek(int anim, int frame);
 int Animation_SetLayer(int anim, int frame, const char *name, int state);
-int Animation_Draw(int anim, struct surface_t *s, int dx, int dy, int mask, int *x, int *y, int *w, int *h);
+int Animation_Draw(int anim, struct surface_t *s, int dx, int dy, int mask, int alpha, int *x, int *y, int *w, int *h);
 
 #endif

@@ -207,7 +207,7 @@ class EventManagerImpl(object):
 		self.events = []
 		self._quit = False
 	def RegisterEventReciever(self, seq, recv):
-		print('STUB: EventManagerImpl.RegisterEventReceiver ' + str(recv))
+		# print('STUB: EventManagerImpl.RegisterEventReceiver ' + str(recv))
 		self.events.append(recv)
 		if seq > 10000:
 			assert seq == 15500 # TYPE_ANIMATION_EVENT

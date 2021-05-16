@@ -62,7 +62,10 @@ typedef void (*SysAudioCb)(void *, uint8_t *data, int len);
 
 int	System_Init();
 void	System_Fini();
-void	System_SetScreenSize(int w, int h, const char *caption, int scale, const char *filter, bool fullscreen);
+
+void	System_SetIcon(const uint8_t *data, int size);
+void	System_SetScreenWindowed(int flag);
+void	System_SetScreenSize(int w, int h);
 void	System_SetScreenTitle(const char *caption);
 void	System_UpdateScreen(const void *p, int present);
 int	System_LoadCursor(const uint32_t *rgba, int w, int h);

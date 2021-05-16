@@ -79,6 +79,7 @@ class Sprite(ISprite):
 		return self._currentFrame
 	def setcurrentframe(self, frame):
 		self._currentFrame = frame
+		yagahost.SeekAnimationFrame(self.anim.res.num, frame)
 		#r = yagahost.GetAnimationFrameRect(self.anim.res.num, frame)
 		#self.renderRect = yagagraphics.Rect(r['x'], r['y'], r['w'], r['h'])
 	currentFrame = property(getcurrentframe, setcurrentframe)

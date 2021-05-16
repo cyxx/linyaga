@@ -52,12 +52,13 @@ static void close_archive() {
 }
 
 static char *extract_script(uint32_t offset, uint32_t size) {
-	char *buf = (char *)malloc(size);
+	char *buf = (char *)malloc(size + 1);
 	if (!buf) {
 		fprintf(stderr, "Failed to allocate %d bytes\n", size);
 	} else {
 		fseek(_archive_fp, offset, SEEK_SET);
 		fread(buf, size, 1, _archive_fp);
+		buf[size] = 0;
 	}
 	return buf;
 }
@@ -92,9 +93,9 @@ static void set_argv(int argc, char *args[]) {
 
 static void unmarshall_modules() {
 	PyObject *module = PyImport_ImportModule("marshal");
-	PyObject *moduleDict = PyModule_GetDict(module);
-	PyObject *loadMethod = PyDict_GetItemString(moduleDict, "load");
-	PyObject *fileObject = PyFile_FromFile(_archive_fp, _archive_path, "rb+", 0);
+	PyObject *module_dict = PyModule_GetDict(module);
+	PyObject *load_method = PyDict_GetItemString(module_dict, "load");
+	PyObject *file_object = PyFile_FromFile(_archive_fp, _archive_path, "rb+", 0);
 
 	for (uint8_t *p = _archive_toc; p < _archive_tocend; p += READ_BE_UINT32(p)) {
 		if (p[17] != 'm') {
@@ -103,8 +104,8 @@ static void unmarshall_modules() {
 		const uint32_t offset = _archive_offset + READ_BE_UINT32(p + 4) + 8;
 		fseek(_archive_fp, offset, SEEK_SET);
 		char *moduleName = (char *)p + 18;
-		PyObject *objectCode = PyObject_CallFunction(loadMethod, "O", fileObject);
-		PyObject *code = PyImport_ExecCodeModule(moduleName, objectCode);
+		PyObject *object_code = PyObject_CallFunction(load_method, "O", file_object);
+		PyImport_ExecCodeModule(moduleName, object_code);
 		if (PyErr_Occurred()) {
 			PyErr_Print();
 			PyErr_Clear();
@@ -120,7 +121,7 @@ static void execute_scripts() {
 		const uint32_t offset = _archive_offset + READ_BE_UINT32(p + 4);
 		const uint32_t size = READ_BE_UINT32(p + 8);
 		assert(p[16] == 2); /* uncompressed data */
-		char *script = (char *)extract_script(offset, size);
+		char *script = extract_script(offset, size);
 		PyRun_SimpleString(script);
 		if (PyErr_Occurred()) {
 			PyErr_Print();

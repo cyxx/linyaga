@@ -14,20 +14,23 @@ static int _screen_h;
 static SDL_Window *_window;
 static SDL_Renderer *_renderer;
 static SDL_Texture *_texture;
+static SDL_Surface *_icon;
 static struct cursor_t _cursors[MAX_CURSORS];
 static int _cursors_count;
+static bool _fullscreen;
 
-int System_Init() {
-	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
-	SDL_ShowCursor(SDL_ENABLE);
-	_screen_w = _screen_h = 0;
-	_window = 0;
-	_renderer = 0;
-	_texture = 0;
-	return 0;
+static void init_screen(int w, int h, bool fullscreen) {
+	const int flags = fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : SDL_WINDOW_RESIZABLE;
+	_window = SDL_CreateWindow("", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h, flags);
+	if (_icon) {
+		SDL_SetWindowIcon(_window, _icon);
+	}
+	_renderer = SDL_CreateRenderer(_window, -1, 0);
+	SDL_RenderSetLogicalSize(_renderer, w, h);
+	_texture = SDL_CreateTexture(_renderer, SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_STREAMING, w, h);
 }
 
-void System_Fini() {
+static void fini_screen() {
 	if (_texture) {
 		SDL_DestroyTexture(_texture);
 		_texture = 0;
@@ -40,6 +43,25 @@ void System_Fini() {
 		SDL_DestroyWindow(_window);
 		_window = 0;
 	}
+}
+
+int System_Init() {
+	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
+	SDL_ShowCursor(SDL_ENABLE);
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
+	_screen_w = _screen_h = 0;
+	_window = 0;
+	_renderer = 0;
+	_texture = 0;
+	return 0;
+}
+
+void System_Fini() {
+	fini_screen();
+	if (_icon) {
+		SDL_FreeSurface(_icon);
+		_icon = 0;
+	}
 	for (int i = 0; i < _cursors_count; ++i) {
 		struct cursor_t *cursor = &_cursors[i];
 		SDL_FreeSurface(cursor->surface);
@@ -49,25 +71,23 @@ void System_Fini() {
 	SDL_Quit();
 }
 
-void System_SetScreenSize(int w, int h, const char *caption, int scale, const char *filter, bool fullscreen) {
+void System_SetIcon(const uint8_t *data, int size) {
+	SDL_RWops *rw = SDL_RWFromConstMem(data, size);
+	_icon = SDL_LoadBMP_RW(rw, 1);
+}
+
+void System_SetScreenWindowed(int flag) {
+	_fullscreen = !flag;
+	if (_window) {
+		SDL_SetWindowFullscreen(_window, _fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+	}
+}
+
+void System_SetScreenSize(int w, int h) {
 	assert(_screen_w == 0 && _screen_h == 0); // abort if called more than once
 	_screen_w = w;
 	_screen_h = h;
-	if (!filter || strcmp(filter, "nearest") == 0) {
-		SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
-	} else if (strcmp(filter, "linear") == 0) {
-		SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
-	} else {
-		fprintf(stderr, "Unhandled filter '%s'\n", filter);
-	}
-	const int window_w = w * scale;
-	const int window_h = h * scale;
-	const int flags = fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : SDL_WINDOW_RESIZABLE;
-	_window = SDL_CreateWindow(caption, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, window_w, window_h, flags);
-	_renderer = SDL_CreateRenderer(_window, -1, 0);
-	SDL_RenderSetLogicalSize(_renderer, w, h);
-	static const uint32_t pfmt = SDL_PIXELFORMAT_RGB888;
-	_texture = SDL_CreateTexture(_renderer, pfmt, SDL_TEXTUREACCESS_STREAMING, _screen_w, _screen_h);
+	init_screen(w, h, _fullscreen);
 }
 
 void System_UpdateScreen(const void *p, int present) {
@@ -104,7 +124,7 @@ static int key_code(const SDL_Keysym *key) {
 	if (key->sym >= SDLK_0 && key->sym <= SDLK_9) {
 		code = '0' + key->sym - SDLK_0;
 	} else if (key->sym >= SDLK_a && key->sym <= SDLK_z) {
-		code = 'A' + key->sym - SDLK_a;
+		code = 'a' + key->sym - SDLK_a;
 	} else if (key->scancode == SDL_SCANCODE_0) {
 		code = '0';
 	} else if (key->scancode >= SDL_SCANCODE_1 && key->scancode <= SDL_SCANCODE_9) {

@@ -23,17 +23,22 @@ class ImageString(object):
 		self.hJustify = None
 		self.vJustify = None
 		self.text = ''
+		self._textOffsetX = 0
+		self._textOffsetY = 0
 	def SetText(self, text):
 		# print('STUB: ImageString.SetText text:' + text)
 		self.text = text
+		r = self.font.GetStringRect(text)
+		self._textOffsetX = r.width  / 2
+		self._textOffsetY = r.height / 2
 	def Seek(self, pos):
 		# print('STUB: ImageString.Seek pos:' + str(pos))
 		pass
 	def Render(self, camera):
 		# print('STUB: ImageString.Render')
-		dstRect = yagagraphics.Rect(self.position.x, self.position.y)
+		dstRect = yagagraphics.Rect(self.position.x - self._textOffsetX, self.position.y - self._textOffsetY)
 		for c in self.text:
-			yagahost.DrawFontChar(self.font._font, ord(c), dstRect.x, dstRect.y)
+			yagahost.DrawFontChar(self.font._font, ord(c), dstRect.x, dstRect.y, self.opacity)
 			r = yagahost.GetFontCharRect(self.font._font, ord(c))
 			dstRect.x += r['w']
 

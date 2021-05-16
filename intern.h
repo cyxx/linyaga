@@ -65,8 +65,8 @@ static inline uint16_t fread_le16(FILE *fp) {
 	return READ_LE_UINT16(buf);
 }
 
-static inline uint32_t blend(uint32_t a, uint32_t b) {
-	const uint8_t alpha = b >> 24;
+static inline uint32_t blend(uint32_t a, uint32_t b, int balpha) {
+	const uint8_t alpha = ((b >> 24) * balpha) >> 8;
 	switch (alpha) {
 	case 0:
 		return a;

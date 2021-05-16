@@ -13,7 +13,9 @@ static uint32_t *decode(FILE *fp, int size, int w, int h, int fmt, const uint32_
 		fprintf(stderr, "Failed to allocate RGBA buffer w:%d h:%d\n", w, h);
 	} else {
 		int offset = 0;
-		if (fmt == 0x40012F9 || fmt == 0x40012FB) { /* paletted */
+		switch (fmt) {
+		case 0x40012F9:
+		case 0x40012FB: /* paletted */
 			while (size > 0) {
 				const uint8_t code = fgetc(fp);
 				const int count = (code & 0x3F) + 1;
@@ -35,7 +37,8 @@ static uint32_t *decode(FILE *fp, int size, int w, int h, int fmt, const uint32_
 				--size;
 				offset += count;
 			}
-		} else if (fmt == 0xC0012F9) { /* rgba */
+			break;
+		case 0xC0012F9: /* rgba */
 			while (size > 0) {
 				const uint8_t code = fgetc(fp);
 				const int count = (code & 0x3F) + 1;
@@ -57,8 +60,10 @@ static uint32_t *decode(FILE *fp, int size, int w, int h, int fmt, const uint32_
 				--size;
 				offset += count;
 			}
-		} else {
+			break;
+		default:
 			fprintf(stderr, "Unsupported RLE format 0x%x\n", fmt);
+			break;
 		}
 	}
 	// fprintf(stdout, "RLE remaining bytes %d\n", size);

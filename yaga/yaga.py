@@ -17,6 +17,8 @@ class Profiler(object):
 		# print('STUB: Profiler.EndProfileFrame')
 		pass
 
+TOGGLE_GAME_DEBUG_GLOBALS = True
+
 MINIMUM_MEMORY_REQUIRED = 48000 * 1024
 
 class SystemImpl(object):
@@ -25,6 +27,12 @@ class SystemImpl(object):
 		self.systemMemoryAvail = MINIMUM_MEMORY_REQUIRED
 		self.counterU32 = 0
 		self.profiler = Profiler()
+		if TOGGLE_GAME_DEBUG_GLOBALS:
+			import globals
+			#globals.DEBUG_BUILD = 1
+			globals.CHEATS_ENABLED = 1
+			#globals.DEMO_BUILD = 1
+			#globals.INITIAL_SCENE = 'map'
 	def CreateUInt32Seq(self):
 		counter = self.counterU32
 		#self.counterU32 = (self.counterU32 + 1) & 0xFFFFFFFF

@@ -16,8 +16,6 @@ class ResourceData(object):
 	def __init__(self, path, num):
 		self.path = path
 		self.num = num
-	def __str__(self):
-		return 'ResourceData path:' + self.path + ' num:' + str(self.num)
 	def __del__(self):
 		# print('STUB: ResourceData.__del__ path:' + self.path + ' num:' + str(self.num))
 		yagahost.FreeAsset(self.num)
@@ -33,11 +31,6 @@ class ResourceStream(object):
 	def __init__(self, path, f):
 		self.path = path
 		self.f = f
-	def __str__(self):
-		return 'ResourceStream path:' + self.path + ' f:' + str(self.f)
-	def __del__(self):
-		# print('STUB: ResourceStream.__del__ path:' + self.path + ' num:' + str(self.f))
-		pass
 
 class ResourceManagerImpl(object):
 	def __init__(self):

@@ -7,7 +7,7 @@ static struct layer_t _layers[MAX_LAYERS];
 static struct layer_t *_next_free_layer;
 static int _total_layers_count;
 
-#define MAX_FRAMES 768
+#define MAX_FRAMES 1024
 
 static struct frame_t _frames[MAX_FRAMES];
 static struct frame_t *_next_free_frame;
@@ -232,7 +232,7 @@ int Animation_SetLayer(int anim, int frame_num, const char *name, int state) {
 	return 0;
 }
 
-static void draw_layer(struct layer_t *layer, struct surface_t *s, int x, int y, int *x1, int *y1, int *x2, int *y2) {
+static void draw_layer(struct layer_t *layer, struct surface_t *s, int x, int y, int alpha, int *x1, int *y1, int *x2, int *y2) {
 	const uint32_t *src = layer->rgba;
 	int w = layer->w;
 	if (x < 0) {
@@ -261,7 +261,7 @@ static void draw_layer(struct layer_t *layer, struct surface_t *s, int x, int y,
 	uint32_t *dst = s->buffer + y * s->w + x;
 	for (int j = 0; j < h; ++j) {
 		for (int i = 0; i < w; ++i) {
-			dst[i] = blend(dst[i], src[i]);
+			dst[i] = blend(dst[i], src[i], alpha);
 		}
 		dst += s->w;
 		src += layer->w;
@@ -287,7 +287,7 @@ static int is_phoneme(struct layer_t *layer, int mask) {
 	return (layer->mask & mask) == 0;
 }
 
-int Animation_Draw(int anim, struct surface_t *s, int dx, int dy, int mask, int *x, int *y, int *w, int *h) {
+int Animation_Draw(int anim, struct surface_t *s, int dx, int dy, int mask, int alpha, int *x, int *y, int *w, int *h) {
 	assert(!(anim < 0));
 	struct frame_t *frame = _animations[anim].current_frame;
 	assert(frame);
@@ -302,7 +302,7 @@ int Animation_Draw(int anim, struct surface_t *s, int dx, int dy, int mask, int 
 		}
 		const int lx = layer->x + dx;
 		const int ly = layer->y + dy;
-		draw_layer(layer, s, lx, ly, &x1, &y1, &x2, &y2);
+		draw_layer(layer, s, lx, ly, alpha, &x1, &y1, &x2, &y2);
 	}
 	*x = x1;
 	*y = y1;
