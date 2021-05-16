@@ -8,6 +8,7 @@ typedef void (*MixerLockProc)(int);
 
 int Mixer_Init(int hz, MixerLockProc lockProc);
 int Mixer_Fini();
+
 int Mixer_PlayMp3(FILE *fp);
 int Mixer_PlayWav(FILE *fp);
 int Mixer_Stop(int channel);

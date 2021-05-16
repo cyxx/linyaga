@@ -48,7 +48,7 @@ class ResourceManagerImpl(object):
 		if path.endswith('.evt'):
 			# load .evb
 			return yagahost.OpenAsset(path[:-1] + 'b')
-		if path.endswith('.wav') or path.endswith('.mp3'):
+		if path.endswith('.wav') or path.endswith('.mp3') or path.endswith('da2'):
 			f = yagahost.OpenAsset(path)
 			if f:
 				return ResourceStream(path, f)

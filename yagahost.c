@@ -5,6 +5,7 @@
 #include "mixer.h"
 #include "resource.h"
 #include "sys.h"
+#include "video.h"
 
 #if PY_MAJOR_VERSION == 2 && PY_MINOR_VERSION == 2
 #define Py_RETURN_NONE  return Py_INCREF(Py_None), Py_None
@@ -95,7 +96,7 @@ static PyObject *yagahost_clearscreen(PyObject *self, PyObject *args) {
 }
 
 static PyObject *yagahost_updatescreen(PyObject *self, PyObject *args) {
-	System_UpdateScreen(_screenBuffer, 1);
+	System_UpdateScreen(_screenBuffer);
 	Py_RETURN_NONE;
 }
 
@@ -416,6 +417,55 @@ static PyObject *yagahost_getfontcharrect(PyObject *self, PyObject *args) {
 	return obj;
 }
 
+static PyObject *yagahost_playvideo(PyObject *self, PyObject *args) {
+	PyObject *file;
+	const char *name;
+
+	if (!PyArg_ParseTuple(args, "Os", &file, &name)) {
+		return 0;
+	}
+	assert(PyFile_CheckExact(file));
+	PyFile_IncUseCount((PyFileObject *)file);
+	const int video = Video_PlayVideo(PyFile_AsFile(file));
+	return PyInt_FromLong(video);
+}
+
+static PyObject *yagahost_stopvideo(PyObject *self, PyObject *args) {
+	int video;
+	PyObject *file;
+
+	if (!PyArg_ParseTuple(args, "Oi", &file, &video)) {
+		return 0;
+	}
+	assert(PyFile_CheckExact(file));
+	PyFile_DecUseCount((PyFileObject *)file);
+	Video_StopVideo(video);
+	Py_RETURN_NONE;
+}
+
+static PyObject *yagahost_isvideoplaying(PyObject *self, PyObject *args) {
+	int video;
+
+	if (!PyArg_ParseTuple(args, "i", &video)) {
+		return 0;
+	}
+	if (Video_IsVideoPlaying(video)) {
+		Py_RETURN_TRUE;
+	} else {
+		Py_RETURN_FALSE;
+	}
+}
+
+static PyObject *yagahost_rendervideo(PyObject *self, PyObject *args) {
+	int video;
+
+	if (!PyArg_ParseTuple(args, "i", &video)) {
+		return 0;
+	}
+	Video_RenderVideo(video);
+	Py_RETURN_NONE;
+}
+
 static PyMethodDef yagahost_methods[] = {
 	{ "HasAsset", yagahost_hasasset, METH_VARARGS, "" },
 	{ "LoadAsset", yagahost_loadasset, METH_VARARGS, "" },
@@ -442,6 +492,10 @@ static PyMethodDef yagahost_methods[] = {
 	{ "LoadFont", yagahost_loadfont, METH_VARARGS, "" },
 	{ "DrawFontChar", yagahost_drawfontchar, METH_VARARGS, "" },
 	{ "GetFontCharRect", yagahost_getfontcharrect, METH_VARARGS, "" },
+	{ "PlayVideo", yagahost_playvideo, METH_VARARGS, "" },
+	{ "StopVideo", yagahost_stopvideo, METH_VARARGS, "" },
+	{ "IsVideoPlaying", yagahost_isvideoplaying, METH_VARARGS, "" },
+	{ "RenderVideo", yagahost_rendervideo, METH_VARARGS, "" },
 	{ 0, 0, 0, 0 }
 };
 
@@ -511,11 +565,5 @@ void inityagahost(void) { // PyMODINIT_FUNC
 	}
 	for (int i = 0; _keys[i].name; ++i) {
 		PyModule_AddIntConstant(m, _keys[i].name, _keys[i].value);
-	}
-
-	if (0) {
-		System_Init();
-		Animation_Init();
-		Resource_Init();
 	}
 }

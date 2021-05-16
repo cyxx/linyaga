@@ -13,11 +13,13 @@ static int _screen_w;
 static int _screen_h;
 static SDL_Window *_window;
 static SDL_Renderer *_renderer;
-static SDL_Texture *_texture;
+static SDL_Texture *_gameTexture;
+static SDL_Texture *_videoTexture;
 static SDL_Surface *_icon;
 static struct cursor_t _cursors[MAX_CURSORS];
 static int _cursors_count;
 static bool _fullscreen;
+static bool _screen_yuv;
 
 static void init_screen(int w, int h, bool fullscreen) {
 	const int flags = fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : SDL_WINDOW_RESIZABLE;
@@ -27,13 +29,18 @@ static void init_screen(int w, int h, bool fullscreen) {
 	}
 	_renderer = SDL_CreateRenderer(_window, -1, 0);
 	SDL_RenderSetLogicalSize(_renderer, w, h);
-	_texture = SDL_CreateTexture(_renderer, SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_STREAMING, w, h);
+	_gameTexture = SDL_CreateTexture(_renderer, SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_STREAMING, w, h);
+	_videoTexture = SDL_CreateTexture(_renderer, SDL_PIXELFORMAT_IYUV, SDL_TEXTUREACCESS_STREAMING, w, h);
 }
 
 static void fini_screen() {
-	if (_texture) {
-		SDL_DestroyTexture(_texture);
-		_texture = 0;
+	if (_gameTexture) {
+		SDL_DestroyTexture(_gameTexture);
+		_gameTexture = 0;
+	}
+	if (_videoTexture) {
+		SDL_DestroyTexture(_videoTexture);
+		_videoTexture = 0;
 	}
 	if (_renderer) {
 		SDL_DestroyRenderer(_renderer);
@@ -50,9 +57,6 @@ int System_Init() {
 	SDL_ShowCursor(SDL_ENABLE);
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
 	_screen_w = _screen_h = 0;
-	_window = 0;
-	_renderer = 0;
-	_texture = 0;
 	return 0;
 }
 
@@ -90,13 +94,21 @@ void System_SetScreenSize(int w, int h) {
 	init_screen(w, h, _fullscreen);
 }
 
-void System_UpdateScreen(const void *p, int present) {
-	SDL_UpdateTexture(_texture, 0, p, _screen_w * sizeof(uint32_t));
-	if (present) {
-		SDL_RenderClear(_renderer);
-		SDL_RenderCopy(_renderer, _texture, 0, 0);
-		SDL_RenderPresent(_renderer);
+void System_UpdateScreen(const void *p) {
+	SDL_RenderClear(_renderer);
+	if (_screen_yuv) {
+		SDL_RenderCopy(_renderer, _videoTexture, 0, 0);
+		_screen_yuv = false;
+	} else {
+		SDL_UpdateTexture(_gameTexture, 0, p, _screen_w * sizeof(uint32_t));
+		SDL_RenderCopy(_renderer, _gameTexture, 0, 0);
 	}
+	SDL_RenderPresent(_renderer);
+}
+
+void System_UpdateScreenYUV(int w, int h, const uint8_t *ydata, int ypitch, const uint8_t *udata, int upitch, const uint8_t *vdata, int vpitch) {
+	const int ret = SDL_UpdateYUVTexture(_videoTexture, 0, ydata, ypitch, udata, upitch, vdata, vpitch);
+	_screen_yuv = (ret == 0);
 }
 
 void System_SetScreenTitle(const char *name) {

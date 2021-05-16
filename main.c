@@ -5,6 +5,7 @@
 #include "mixer.h"
 #include "resource.h"
 #include "sys.h"
+#include "video.h"
 
 static const char *USAGE =
 	"Usage: DATAPATH=path/to/he/ %s path/to/.exe\n";
@@ -26,16 +27,6 @@ static void AudioLock(int flag) {
 
 #define BITMAPFILEHEADER_SIZE 14
 #define BITMAPINFOHEADER_SIZE 40
-
-static void TO_LE16(uint8_t *dst, uint16_t value) {
-	dst[0] = value & 255;
-	dst[1] = value >> 8;
-}
-
-static void TO_LE32(uint8_t *dst, uint32_t value) {
-	TO_LE16(&dst[0], value & 0xFFFF);
-	TO_LE16(&dst[2], value >> 16);
-}
 
 static uint8_t *LoadIco(const char *path, int *bitmapsize) {
 	uint8_t *bitmap = 0;
@@ -95,6 +86,7 @@ int main(int argc, char *argv[]) {
 	System_StartAudio(AudioSamplesCb, 0);
 	Animation_Init();
 	Font_Init();
+	Video_Init();
 	Resource_Init();
 	int size = 0;
 	uint8_t *ico = LoadIco(argv[1], &size);
@@ -104,6 +96,7 @@ int main(int argc, char *argv[]) {
 	}
 	Installer_Main(argc - 1, argv + 1);
 	Resource_Fini();
+	Video_Fini();
 	Font_Fini();
 	Animation_Fini();
 	Mixer_Fini();

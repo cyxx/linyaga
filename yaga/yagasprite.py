@@ -22,7 +22,7 @@ class Sprite(ISprite):
 		self.position = yagascene.Point()
 		self.renderRect = yagagraphics.Rect()
 		self.renderMask = 0 | 1
-		self.opacity = 1.
+		self.opacity = 1.0
 		self.frameCount = 1
 		self.loopCount = 0
 		self._currentFrame = 0
@@ -178,10 +178,21 @@ class TalkieSprite(Sprite):
 
 class IVideoElement(object):
 	def __init__(self, res):
-		self.isPlaying = False
+		self.volume = 1.0
+		self.res = res
+		self._video = -1
+	def __del__(self):
+		yagahost.StopVideo(self.res.f, self._video)
 	def Stop(self, scene):
-		print('STUB: IVideoElement.Stop')
+		# print('STUB: IVideoElement.Stop')
+		yagahost.StopVideo(self.res.f, self._video)
+		self._video = -1
 	def Run(self, scene):
-		print('STUB: IVideoElement.Run')
+		# print('STUB: IVideoElement.Run')
+		self._video = yagahost.PlayVideo(self.res.f, self.res.path)
 	def Render(self, camera):
-		print('STUB: IVideoElement.Render')
+		# print('STUB: IVideoElement.Render')
+		yagahost.RenderVideo(self._video)
+	def getisplaying(self):
+		return yagahost.IsVideoPlaying(self._video)
+	isPlaying = property(getisplaying)

@@ -85,7 +85,7 @@ ret_decref:
 }
 
 static PyMethodDef ZlibMethods[] = {
-	{ "decompress", ZlibDecompress, 1, "" },
+	{ "decompress", ZlibDecompress, METH_VARARGS, "" },
 	{ 0, 0, 0, 0 }
 };
 

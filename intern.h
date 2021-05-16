@@ -25,6 +25,16 @@ static inline int MAX(int a, int b) {
 	return (a > b) ? a : b;
 }
 
+static inline void TO_LE16(uint8_t *dst, uint16_t value) {
+	dst[0] = value & 255;
+	dst[1] = value >> 8;
+}
+
+static inline void TO_LE32(uint8_t *dst, uint32_t value) {
+	TO_LE16(&dst[0], value & 0xFFFF);
+	TO_LE16(&dst[2], value >> 16);
+}
+
 static inline uint32_t READ_BE_UINT32(const uint8_t *p) {
 	return (p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3];
 }
